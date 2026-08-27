@@ -153,7 +153,7 @@ tr.editing{background:rgba(204,120,92,.10)}
 .foot{margin-top:64px;padding-top:24px;border-top:1px solid var(--hairline-soft);font-size:12.5px;color:var(--muted-soft);display:flex;gap:16px;flex-wrap:wrap}
 .foot a{color:var(--muted-soft)}
 
-.tabs{display:flex;gap:6px;margin:0 0 20px;padding:5px;background:var(--surface-card);border-radius:999px;width:fit-content;max-width:100%;flex-wrap:wrap}
+.tabs{display:flex;gap:6px;margin:32px 0 0;padding:5px;background:var(--surface-card);border-radius:999px;width:fit-content;max-width:100%;flex-wrap:wrap}
 .tab{font-family:var(--sans);font-size:14.5px;font-weight:500;padding:10px 20px;border:none;border-radius:999px;background:none;color:var(--muted);cursor:pointer;transition:background .15s,color .15s}
 .tab:hover{color:var(--ink)}
 .tab[aria-selected="true"]{background:var(--canvas);color:var(--ink)}
@@ -234,12 +234,12 @@ tr.editing{background:rgba(204,120,92,.10)}
   <p class="err" id="cfg-err" hidden></p>
 </section>
 
+<nav class="tabs" id="tabs" role="tablist" aria-label="예약 방법">
+<button class="tab" id="tab-form" type="button" role="tab" aria-selected="true" aria-controls="panel-form">폼으로 예약</button>
+<button class="tab" id="tab-bot" type="button" role="tab" aria-selected="false" aria-controls="panel-bot" hidden>챗봇으로 예약</button>
+</nav>
 <main class="desk">
   <div class="col">
-    <nav class="tabs" id="tabs" role="tablist" aria-label="예약 방법">
-      <button class="tab" id="tab-form" type="button" role="tab" aria-selected="true" aria-controls="panel-form">폼으로 예약</button>
-      <button class="tab" id="tab-bot" type="button" role="tab" aria-selected="false" aria-controls="panel-bot" hidden>챗봇으로 예약</button>
-    </nav>
 
     <div id="panel-form" role="tabpanel" aria-labelledby="tab-form">
 
@@ -332,7 +332,7 @@ tr.editing{background:rgba(204,120,92,.10)}
         <div class="chat__quick" id="chat-quick" hidden></div>
         <div class="chat__bar">
           <input id="chat-input" type="text" autocomplete="off"
-                 placeholder="어디로 가고 싶은지 말씀해 주세요">
+                 placeholder="예) 헬스장 있는 숙소요">
           <button class="btn" id="chat-send" type="button">보내기</button>
           <button class="btn btn--ghost" id="chat-reset" type="button">처음부터</button>
         </div>
@@ -393,7 +393,6 @@ tr.editing{background:rgba(204,120,92,.10)}
 
 <footer class="foot">
   <span>가는길 · 서울 장소 예약과 택시 배차</span>
-  <a href="?lab=1" id="lab-link">실습 모드</a>
 </footer>
 
 </div>
@@ -414,9 +413,8 @@ const SUPABASE_ANON_KEY = CFG.SUPABASE_ANON_KEY || "";
 //   내 컴퓨터 파일에서는 ?lab=1      (파일을 직접 열면 경로를 못 쓰기 때문입니다)
 const LAB = /\/test\/?$/.test(location.pathname) ||
             new URLSearchParams(location.search).get("lab") === "1";
-const ON_WEB = location.protocol.indexOf("http") === 0;
-const LAB_URL  = ON_WEB ? "/test" : location.pathname + "?lab=1";
-const HOME_URL = ON_WEB ? "/" : location.pathname;
+// 실습 화면은 주소로만 들어갑니다. 손님 화면에는 링크를 두지 않습니다.
+//   배포: /test    로컬 파일: ?lab=1
 
 // 장소 218곳. WoS 대화에서 뽑았습니다.
 // [도메인, 이름, 종류, 지역, 가격대, 주소, 연락처, 평점, 조건번호들]
@@ -502,7 +500,7 @@ const SLOT = {
 const ASK_PROMPT = {
   place_domain:"관광지, 숙소, 식당 중에 무엇을 찾으실지 골라주세요",
   place_type:"종류를 골라주세요",
-  place_area:"어느 지역으로 갈지 골라주세요",
+  place_area:"지역을 골라주세요",
   place_price:"가격대를 골라주세요",
   place_name:"장소를 골라주세요",
   taxi_from:"어디서 타실지 알려주세요",
@@ -991,9 +989,11 @@ async function connect(url, key){
 // 그래서 API 키가 필요 없고, 키를 브라우저에 내보내지 않아도 됩니다.
 
 const HIST = (SLOTS && SLOTS.history_turns) || 2;
-const STYLE = (SLOTS && SLOTS.ask_style) || "all_at_once";
+const STYLE = (SLOTS && SLOTS.ask_style) || "one_by_one";
 const QUESTION = {};
-ASK.forEach(function(k){ QUESTION[k] = ASK_PROMPT[k]; });
+// 갈래에 따라 칸이 늘어나므로 처음부터 모든 칸의 질문을 채워 둡니다.
+// ASK 기준으로만 만들면 나중에 생긴 칸이 undefined 로 뜹니다.
+ALL_ASK.forEach(function(k){ QUESTION[k] = ASK_PROMPT[k]; });
 if (SLOTS && SLOTS.ask){
   SLOTS.ask.forEach(function(p){
     const k = SLOT_KEY[p[0]];
@@ -1252,14 +1252,44 @@ async function chatSend(){
 
   if (missing.length){
     lastAsked = missing[0];
-    let body;
-    if (STYLE === "all_at_once"){
-      body = "예약하려면 아래를 한 번에 알려 주세요.\n" +
-        missing.map(function(k){ return "· " + QUESTION[k]; }).join("\n");
-    } else {
-      body = QUESTION[missing[0]];
+
+    // 알아들은 것을 먼저 되짚어 줍니다. 그래야 무시당한 느낌이 안 듭니다.
+    const heard = [];
+    if (box.place_domain) heard.push(box.place_domain === "관광" ? "관광지" : box.place_domain);
+    if (box.place_type)   heard.push(box.place_type);
+    if (box.place_price)  heard.push(box.place_price);
+    if (box.place_area)   heard.push(box.place_area);
+    st.filters.forEach(function(f){
+      heard.push(f.replace(/\s*유무$/, "").replace(/\s*가능$/, "") + " 있는 곳");
+    });
+
+    let lead = "";
+    if (box.place_domain){
+      const cand = matching();
+      // 한국어 조사는 앞 글자 받침에 따라 갈립니다. 받침이 있으면 "으로".
+      const josa = function(w){
+        const c = w.charCodeAt(w.length - 1) - 0xAC00;
+        if (c < 0 || c > 11171) return "로";
+        const jong = c % 28;
+        return (jong === 0 || jong === 8) ? "로" : "으로";   // 받침 없음 / ㄹ 받침
+      };
+      const tail = heard.length ? heard.join(" · ") : "";
+      lead = (tail ? tail + josa(tail) + " " : "") + cand.length + "곳 있어요.";
+      // 시나리오의 "(후보 받고)" 가 이것입니다. 좁혀졌으면 실제 이름을 보여 줍니다.
+      if (!box.place_name && cand.length && cand.length <= 6){
+        lead += "\n" + cand.map(function(p){ return p.name; }).join(", ");
+      } else if (!box.place_name && cand.length){
+        lead += " 예를 들면 " + cand.slice(0,3).map(function(p){ return p.name; }).join(", ") + " 같은 곳이요.";
+      }
+      lead += "\n\n";
+    } else if (heard.length){
+      lead = heard.join(" · ") + "\n\n";
     }
-    bubble("bot", head + esc(body));
+
+    const body = (STYLE === "all_at_once")
+      ? "아직 알려주실 것이 있어요.\n" + missing.map(function(k){ return "· " + QUESTION[k]; }).join("\n")
+      : QUESTION[missing[0]];
+    bubble("bot", head + esc(lead + body));
     return;
   }
 
@@ -1303,7 +1333,7 @@ async function chatSend(){
 function chatReset(){
   turns = []; lastAsked = "";
   $("chat-log").innerHTML = "";
-  bubble("bot", "안녕하세요. 어디로 가고 싶으신지, 택시는 어디서 어디로 탈지 말씀해 주세요.");
+  bubble("bot", "안녕하세요. 찾으시는 곳과 택시를 말씀해 주세요.\n예) 헬스장 있는 숙소요 / 서울 북쪽 일식당이요");
 }
 
 function showTab(which){
@@ -1352,8 +1382,6 @@ if (LAB){
   });
 }
 
-$("lab-link").setAttribute("href", LAB ? HOME_URL : LAB_URL);
-
 if (LAB){
   document.title = "가는길 · 실습 모드";
   $("lab-meta").hidden = false;
@@ -1363,7 +1391,6 @@ if (LAB){
   $("lbl-taxi").textContent = "택시";
   $("hint-place").hidden = false;
   $("hint-taxi").hidden = false;
-  $("lab-link").textContent = "예약 화면으로";
   Array.prototype.forEach.call(document.querySelectorAll(".lab-col"), function(el){ el.hidden = false; });
 
   // 봇이 어떤 설정으로 도는지 같이 보여 줍니다. 비교할 때 기준이 됩니다.
