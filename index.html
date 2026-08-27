@@ -276,7 +276,7 @@ tr.editing{background:rgba(204,120,92,.10)}
             <select id="f-price"></select>
           </div>
           <div class="field" id="wrap-filter">
-            <span class="field__label" id="filter-label">조건 <span class="tag tag--opt">안 채워도 됩니다</span></span>
+            <span class="field__label" id="filter-label">조건 <span class="tag tag--opt">선택</span></span>
             <div class="chips" role="group" aria-labelledby="filter-label" id="f-filter"></div>
           </div>
           <div class="field" id="wrap-name">
@@ -750,7 +750,6 @@ function render(){
     $("f-" + side).hidden = locked;
     $("lock-" + side).hidden = !locked;
     $("tag-" + side).hidden = !locked;
-    $("req-" + side).hidden = locked;   // 자동으로 채워지는 칸은 필수 표시를 뗍니다
     // 체크박스 하나로 켜고 끕니다. 버튼이 상황에 따라 뜻이 바뀌면 헷갈립니다.
     $("wrap-chk-" + side).hidden = !v.place_name;
     $("chk-" + side).checked = locked;
@@ -936,7 +935,7 @@ function reset(keepStatus){
   ALL_ASK.forEach(function(k){ state[k] = ""; });
   state.place_filters = [];
   state.taxi_link = "none";
-  ASK = askFor("");
+  ASK = ALL_ASK.slice();   // 갈래 고르기 전에는 전체 칸을 빈 줄로 보여 줍니다
   editingId = null;
   $("name-note").textContent = "";
   $("form-err").hidden = true;
