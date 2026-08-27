@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>접수 데스크 · 장소에서 택시까지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500&family=Noto+Serif+KR:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#cc785c; --primary-active:#a9583e; --primary-disabled:#e6dfd8;
+  --accent-teal:#5db8a6; --accent-amber:#e8a55a;
+  --canvas:#faf9f5; --surface-soft:#f5f0e8; --surface-card:#efe9de; --cream-strong:#e8e0d2;
+  --dark:#181715; --dark-elev:#252320;
+  --ink:#141413; --body:#3d3d3a; --body-strong:#252523; --muted:#6c6a64; --muted-soft:#8e8b82;
+  --on-primary:#ffffff; --on-dark:#faf9f5; --on-dark-soft:#a09d96;
+  --hairline:#e6dfd8; --hairline-soft:#ebe6df;
+  --error:#c64545;
+  --radius:8px;
+  --serif:"Noto Serif KR",Georgia,serif;
+  --sans:"Noto Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono","Noto Sans KR",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--canvas); color:var(--body);
+  font-family:var(--sans); font-weight:400; font-size:15px; line-height:1.7;
+  padding:0 24px 96px; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px;margin:0 auto}
+
+/* ---------- masthead ---------- */
+.masthead{
+  display:flex;flex-wrap:wrap;align-items:flex-end;gap:20px;
+  padding:56px 0 24px;border-bottom:1px solid var(--hairline);
+}
+.masthead__title{flex:1 1 320px;min-width:0}
+.eyebrow{
+  font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted-soft);margin:0 0 10px;
+}
+h1{
+  font-family:var(--serif);font-size:44px;font-weight:400;
+  letter-spacing:-.035em;line-height:1.08;margin:0;color:var(--ink);
+}
+.masthead__meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+
+.badge{
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+  padding:6px 12px;border:1px solid var(--hairline);border-radius:999px;
+  background:var(--surface-soft);color:var(--muted);white-space:nowrap;
+}
+.badge--live{border-color:var(--accent-teal);color:#2f7566;background:rgba(93,184,166,.14)}
+
+.linkbtn{
+  font-family:var(--sans);font-size:14px;color:var(--body);
+  background:none;border:none;border-bottom:1px solid var(--cream-strong);
+  padding:2px 0;cursor:pointer;transition:color .15s,border-color .15s;
+}
+.linkbtn:hover{color:var(--primary);border-color:var(--primary)}
+
+/* ---------- config ---------- */
+.config{
+  background:var(--surface-soft);border:1px solid var(--hairline);border-radius:12px;
+  padding:28px 32px;margin-top:24px;
+}
+.config[hidden]{display:none}
+.config__grid{display:grid;grid-template-columns:1fr 1fr auto;gap:16px;align-items:end}
+.config__note{font-size:14px;color:var(--muted);margin:0 0 20px;max-width:70ch}
+.config__note code{font-family:var(--mono);font-size:12.5px;background:var(--cream-strong);padding:2px 6px;border-radius:4px;color:var(--body-strong)}
+
+/* ---------- layout ---------- */
+.desk{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px;margin-top:48px;align-items:start}
+
+/* ---------- step cards ---------- */
+.step{background:var(--surface-card);border-radius:12px;padding:0 0 32px;margin-bottom:24px}
+.step__head{display:flex;align-items:center;gap:12px;padding:26px 32px 20px}
+.step__dot{width:9px;height:9px;border-radius:50%;flex:none}
+.step--place .step__dot{background:var(--accent-teal)}
+.step--taxi  .step__dot{background:var(--accent-amber)}
+.step__num{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--muted-soft)}
+.step__name{font-family:var(--serif);font-size:22px;font-weight:400;letter-spacing:-.02em;color:var(--ink)}
+.step__hint{font-size:12.5px;color:var(--muted-soft);margin-left:auto;text-align:right}
+
+.fields{padding:0 32px;display:grid;gap:22px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+
+.field{display:grid;gap:8px;min-width:0}
+.field__label{font-size:13.5px;font-weight:500;color:var(--body-strong);display:flex;align-items:center;gap:8px}
+.tag{font-family:var(--mono);font-size:10px;letter-spacing:.08em;padding:3px 7px;border-radius:999px;font-weight:400}
+.tag--auto{background:var(--cream-strong);color:var(--muted)}
+.tag[hidden]{display:none}
+
+input,select{
+  font-family:var(--sans);font-size:15px;color:var(--ink);
+  background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius);
+  padding:11px 14px;width:100%;transition:border-color .15s;
+}
+input:hover:not([readonly]),select:hover{border-color:var(--cream-strong)}
+input:focus-visible,select:focus-visible,button:focus-visible{
+  outline:2px solid var(--primary);outline-offset:2px;border-color:transparent;
+}
+input[readonly]{background:var(--cream-strong);color:var(--muted);border-style:dashed;cursor:default}
+
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{
+  font-family:var(--sans);font-size:14px;padding:9px 16px;cursor:pointer;
+  background:var(--canvas);border:1px solid var(--hairline);border-radius:999px;color:var(--body);
+  transition:border-color .15s,color .15s,background .15s;
+}
+.chip:hover{border-color:var(--primary);color:var(--primary)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--on-dark)}
+
+.note{font-size:12.5px;color:var(--muted-soft);margin:0}
+.note--warn{color:var(--error)}
+.note--link{color:var(--muted)}
+.err{font-size:13px;color:var(--error);margin:0}
+.err[hidden]{display:none}
+
+/* ---------- actions ---------- */
+.actions{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.btn{
+  font-family:var(--sans);font-size:15px;font-weight:500;
+  padding:12px 26px;border-radius:var(--radius);cursor:pointer;border:1px solid transparent;
+  background:var(--primary);color:var(--on-primary);transition:background .15s;
+}
+.btn:hover{background:var(--primary-active)}
+.btn:disabled{background:var(--primary-disabled);color:var(--muted-soft);cursor:not-allowed}
+.btn--ghost{background:none;color:var(--body);border-color:var(--cream-strong)}
+.btn--ghost:hover{background:var(--cream-strong);color:var(--ink)}
+.status{font-size:13.5px;color:var(--muted)}
+
+/* ---------- board : dark product surface ---------- */
+.board{background:var(--dark);border-radius:12px;position:sticky;top:24px;overflow:hidden}
+.board__head{padding:24px 24px 20px;border-bottom:1px solid rgba(250,249,245,.10)}
+.board__title{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--on-dark-soft);margin:0 0 12px}
+.counter{font-family:var(--serif);font-size:34px;font-weight:400;letter-spacing:-.03em;color:var(--on-dark);line-height:1}
+.counter small{font-family:var(--sans);font-size:12px;color:var(--on-dark-soft);letter-spacing:0;margin-left:10px}
+.meter{display:flex;gap:4px;margin-top:16px}
+.meter i{flex:1;height:3px;background:rgba(250,249,245,.16);border-radius:2px;transition:background .25s}
+.meter i.on{background:var(--on-dark)}
+
+.board__group{padding:18px 24px}
+.board__group + .board__group{border-top:1px solid rgba(250,249,245,.10)}
+.board__label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--on-dark-soft);margin:0 0 12px;text-transform:uppercase}
+.slot{display:flex;gap:12px;align-items:baseline;padding:4px 0;font-size:13.5px;border-radius:4px}
+.slot__k{width:66px;flex:none;color:var(--on-dark-soft);font-size:12.5px}
+.slot__v{flex:1;min-width:0;color:var(--on-dark);word-break:break-all}
+.slot__v.empty{color:rgba(250,249,245,.22);letter-spacing:.12em}
+.slot--auto .slot__v{color:var(--accent-amber);font-style:italic}
+.slot.flash{animation:flash 1.2s ease-out}
+@keyframes flash{0%{background:rgba(204,120,92,.42)}100%{background:transparent}}
+@media (prefers-reduced-motion:reduce){.slot.flash{animation:none}}
+
+.log{padding:18px 24px;border-top:1px solid rgba(250,249,245,.10);max-height:200px;overflow:auto}
+.log__item{font-size:12.5px;color:var(--on-dark-soft);padding:7px 0;border-bottom:1px solid rgba(250,249,245,.07)}
+.log__item:last-child{border:none}
+.log__item b{font-weight:500;color:var(--on-dark)}
+.log__item .cas{font-family:var(--mono);font-size:10px;color:var(--accent-amber);margin-left:6px}
+
+/* ---------- records ---------- */
+.records{margin-top:96px}
+.records__head{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--hairline);padding-bottom:14px}
+h2{font-family:var(--serif);font-size:26px;font-weight:400;letter-spacing:-.025em;margin:0;color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted-soft);text-align:left;font-weight:400;padding:16px 12px 12px;
+  border-bottom:1px solid var(--hairline);
+}
+td{padding:15px 12px;border-bottom:1px solid var(--hairline-soft);vertical-align:top;color:var(--body)}
+tbody tr{transition:background .15s}
+tbody tr:hover{background:var(--surface-soft)}
+tr.editing{background:rgba(204,120,92,.10)}
+.ref{font-family:var(--mono);font-size:12px;color:var(--muted-soft)}
+.empty-state{padding:48px 12px;color:var(--muted-soft);font-size:14.5px}
+.scroller{overflow-x:auto}
+
+@media (max-width:880px){
+  body{padding:0 18px 64px}
+  .desk{grid-template-columns:1fr;gap:24px;margin-top:32px}
+  .board{position:static}
+  .row2{grid-template-columns:1fr}
+  .config__grid{grid-template-columns:1fr}
+  .config,.fields{padding-left:22px;padding-right:22px}
+  .step__head{padding:22px 22px 18px}
+  h1{font-size:34px}
+  .records{margin-top:64px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="masthead__title">
+    <p class="eyebrow">관광 · 택시 통합 접수</p>
+    <h1>접수 데스크</h1>
+  </div>
+  <div class="masthead__meta">
+    <span class="badge" id="mode-badge">로컬 모드</span>
+    <button class="linkbtn" id="config-toggle" type="button">Supabase 연결</button>
+  </div>
+</header>
+
+<section class="config" id="config" hidden aria-label="Supabase 연결 설정">
+  <p class="config__note">
+    Supabase 프로젝트의 <code>Settings → API Keys</code> 에서 두 값을 복사해 넣으세요.
+    비워 두면 이 브라우저 메모리에만 저장됩니다.
+    매번 넣기 번거로우면 <code>.env</code> 에 적고 <code>python make_config.py</code> 를 한 번 돌리세요.
+  </p>
+  <div class="config__grid">
+    <div class="field">
+      <label class="field__label" for="cfg-url">Project URL</label>
+      <input id="cfg-url" type="text" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field">
+      <label class="field__label" for="cfg-key">anon public key</label>
+      <input id="cfg-key" type="password" placeholder="eyJhbGciOi..." autocomplete="off" spellcheck="false">
+    </div>
+    <button class="btn" id="cfg-connect" type="button">연결</button>
+  </div>
+  <p class="err" id="cfg-err" hidden></p>
+</section>
+
+<main class="desk">
+  <div>
+
+    <!-- 1단계 -->
+    <section class="step step--place" aria-labelledby="s1">
+      <div class="step__head">
+        <span class="step__dot" aria-hidden="true"></span>
+        <span class="step__num">01</span>
+        <span class="step__name" id="s1">장소 접수</span>
+        <span class="step__hint">묻는 칸 3 · 자동 칸 3</span>
+      </div>
+      <div class="fields">
+        <div class="row2">
+          <div class="field">
+            <label class="field__label" for="f-type">종류</label>
+            <select id="f-type"></select>
+          </div>
+          <div class="field">
+            <label class="field__label" for="f-area">지역</label>
+            <select id="f-area"></select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field__label" for="f-name">이름</label>
+          <select id="f-name"></select>
+          <p class="note" id="name-note"></p>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label class="field__label" for="f-addr">주소 <span class="tag tag--auto">자동</span></label>
+            <input id="f-addr" type="text" readonly placeholder="이름이 정해지면 채워집니다">
+          </div>
+          <div class="field">
+            <label class="field__label" for="f-phone">연락처 <span class="tag tag--auto">자동</span></label>
+            <input id="f-phone" type="text" readonly placeholder="—">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2단계 -->
+    <section class="step step--taxi" aria-labelledby="s2">
+      <div class="step__head">
+        <span class="step__dot" aria-hidden="true"></span>
+        <span class="step__num">02</span>
+        <span class="step__name" id="s2">택시 배차</span>
+        <span class="step__hint">묻는 칸 4 · 그중 1칸은 장소에서 옴</span>
+      </div>
+      <div class="fields">
+        <div class="field">
+          <span class="field__label" id="link-label">장소를 어느 쪽에 넣을까요</span>
+          <div class="chips" role="group" aria-labelledby="link-label" id="f-link"></div>
+          <p class="note note--link" id="link-note"></p>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label class="field__label" for="f-from">출발지 <span class="tag tag--auto" id="tag-from" hidden>자동</span></label>
+            <input id="f-from" type="text" placeholder="예) 호텔 파크" autocomplete="off">
+          </div>
+          <div class="field">
+            <label class="field__label" for="f-to">도착지 <span class="tag tag--auto" id="tag-to" hidden>자동</span></label>
+            <input id="f-to" type="text" placeholder="예) 심미 호스텔" autocomplete="off">
+          </div>
+        </div>
+        <div class="field" style="max-width:220px">
+          <label class="field__label" for="f-time">출발 시간</label>
+          <input id="f-time" type="time">
+        </div>
+        <div class="field">
+          <span class="field__label" id="taxi-class-label">택시 종류</span>
+          <div class="chips" role="group" aria-labelledby="taxi-class-label" id="f-class"></div>
+        </div>
+        <p class="err" id="form-err" hidden></p>
+        <div class="actions">
+          <button class="btn" id="submit" type="button">배차 접수</button>
+          <button class="btn btn--ghost" id="cancel" type="button" hidden>수정 취소</button>
+          <span class="status" id="status"></span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- 슬롯 보드 -->
+  <aside class="board" aria-label="슬롯 현황">
+    <div class="board__head">
+      <p class="board__title">슬롯 보드</p>
+      <div class="counter"><span id="filled">0</span>/7<small>묻는 칸</small></div>
+      <div class="meter" id="meter" aria-hidden="true"></div>
+    </div>
+    <div class="board__group">
+      <p class="board__label">관광</p>
+      <div id="board-place"></div>
+    </div>
+    <div class="board__group">
+      <p class="board__label">택시</p>
+      <div id="board-taxi"></div>
+    </div>
+    <div class="log" id="log" hidden></div>
+  </aside>
+</main>
+
+<section class="records">
+  <div class="records__head">
+    <h2>접수 목록</h2>
+    <span class="status" id="rec-count"></span>
+  </div>
+  <div class="scroller">
+    <table>
+      <thead>
+        <tr>
+          <th>접수</th><th>장소</th><th>출발지</th><th>도착지</th>
+          <th>출발</th><th>택시</th><th>수정</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p class="empty-state" id="rec-empty">아직 접수가 없습니다. 위에서 장소를 고르고 배차를 접수하세요.</p>
+</section>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+// ================================================================
+//  키는 이 파일에 적지 않습니다.
+//  .env 에 적고  python make_config.py  를 돌리면 config.js 가 생깁니다.
+//  .env 와 config.js 는 .gitignore 에 들어 있어 저장소에 올라가지 않습니다.
+// ================================================================
+const CFG = window.APP_CONFIG || {};
+const SUPABASE_URL = CFG.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = CFG.SUPABASE_ANON_KEY || "";
+// ================================================================
+
+// 로컬 모드에서 쓰는 장소 사전. Supabase 에 연결하면 place_directory 를 대신 읽습니다.
+const FALLBACK_PLACES = [
+  ["N 서울 타워","랜드마크","서울 중앙","서울 용산구 남산공원길 105","02-3455-9277",4.5],
+  ["광화문 광장","랜드마크","서울 북쪽","서울 종로구 세종대로 172","02-2133-2657",4.4],
+  ["남산골 한옥 마을","랜드마크","서울 중앙","서울 중구 퇴계로34길 28","02-2261-0517",4.3],
+  ["동대문 (흥인지문)","랜드마크","서울 북쪽","서울 종로구 종로 288","02-2148-1807",4.2],
+  ["러브뮤지엄","박물관","서울 서쪽","서울 마포구 양화로 162","02-333-3211",3.8],
+  ["롯데월드 아쿠아리움","동물원","서울 동쪽","서울 송파구 올림픽로 300","1661-2000",4.4],
+  ["롯데월드타워&몰","쇼핑","서울 동쪽","서울 송파구 올림픽로 300","1661-2000",4.6],
+  ["봉은사","랜드마크","서울 남쪽","서울 강남구 봉은사로 531","02-3218-4800",4.5],
+  ["북악산 서울 성곽","랜드마크","서울 북쪽","서울 종로구 창의문로 118","02-730-9924",4.4],
+  ["삼청각","랜드마크","서울 북쪽","서울 성북구 대사관로 3","02-765-3700",4.2],
+  ["삼청동길","랜드마크","서울 북쪽","서울 종로구 삼청로 일대","02-2148-1114",4.3],
+  ["서울스카이","랜드마크","서울 동쪽","서울 송파구 올림픽로 300","1661-2000",4.6],
+  ["서울중앙성원","랜드마크","서울 중앙","서울 용산구 우사단로10길 39","02-793-6908",4.3],
+  ["석촌호수","공원","서울 동쪽","서울 송파구 삼학사로 136","02-412-0190",4.5],
+  ["세종대왕 동상","랜드마크","서울 북쪽","서울 종로구 세종대로 175","02-2133-2641",4.4],
+  ["신세계 백화점 본점","쇼핑","서울 중앙","서울 중구 소공로 63","1588-1234",4.4],
+  ["신촌","기타","서울 북쪽","서울 서대문구 신촌로 일대","02-330-1114",4.0],
+  ["예술의전당","박물관","서울 남쪽","서울 서초구 남부순환로 2406","02-580-1300",4.6],
+  ["운현궁","랜드마크","서울 북쪽","서울 종로구 삼일대로 464","02-766-9090",4.2],
+  ["익선동한옥거리","기타","서울 북쪽","서울 종로구 수표로28길 일대","02-2148-1114",4.3],
+  ["청와대","랜드마크","서울 북쪽","서울 종로구 청와대로 1","02-3701-7200",4.5],
+  ["코엑스 아쿠아리움","동물원","서울 남쪽","서울 강남구 영동대로 513","02-6002-6200",4.3],
+  ["하늘공원","공원","서울 서쪽","서울 마포구 하늘공원로 95","02-300-5501",4.5],
+  ["홍대앞 거리","랜드마크","서울 서쪽","서울 마포구 양화로 일대","02-3153-8114",4.2]
+].map(function(r){return {name:r[0],type:r[1],area:r[2],address:r[3],phone:r[4],rating:r[5]};});
+
+const TYPES  = ["랜드마크","박물관","공원","동물원","쇼핑","공연","기타","상관없음"];
+const AREAS  = ["서울 중앙","서울 북쪽","서울 남쪽","서울 동쪽","서울 서쪽","상관없음"];
+const CLASSES= ["고급","에코","개인","상관없음"];
+const ANY = "상관없음";
+
+// 장소를 택시의 어느 쪽에 넣을지. 데이터에서 센 비율을 괄호에 적어 둡니다.
+const LINKS = [
+  ["from", "장소에서 출발", "47%"],
+  ["to",   "장소로 도착",   "24%"],
+  ["none", "연결 안 함",    "29%"]
+];
+
+const ASK  = ["place_type","place_area","place_name",
+              "taxi_from","taxi_to","taxi_depart_at","taxi_class"];
+const LABEL = {
+  place_type:"종류", place_area:"지역", place_name:"이름",
+  place_address:"주소", place_phone:"연락처", place_rating:"평점",
+  taxi_from:"출발지", taxi_to:"도착지", taxi_depart_at:"출발 시간",
+  taxi_class:"종류", taxi_link:"장소 연결", driver_phone:"기사 연락처"
+};
+
+let places = FALLBACK_PLACES.slice();
+let sb = null;
+let records = [];
+let localSeq = 0;
+let editingId = null;
+let logItems = [];
+let prevAuto = {};
+
+const state = {
+  place_type:"", place_area:"", place_name:"",
+  taxi_link:"from",           // 데이터에서 제일 흔한 쪽을 기본값으로
+  taxi_from:"", taxi_to:"",
+  taxi_depart_at:"", taxi_class:""
+};
+
+const $ = function(id){ return document.getElementById(id); };
+const esc = function(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+};
+
+// ---------- 자동 칸 ----------
+// 이 함수 하나가 두 도메인을 잇습니다.
+// 장소 이름이 출발지로 갈지 도착지로 갈지는 taxi_link 가 정합니다.
+// 유저는 그 한쪽을 말한 적이 없습니다.
+function derive(){
+  const p = places.find(function(x){ return x.name === state.place_name; });
+  return {
+    place_address: p ? p.address : "",
+    place_phone:   p ? p.phone   : "",
+    place_rating:  p ? p.rating  : "",
+    taxi_from: state.taxi_link === "from" ? state.place_name : state.taxi_from,
+    taxi_to:   state.taxi_link === "to"   ? state.place_name : state.taxi_to,
+    driver_phone:  ""
+  };
+}
+
+// 화면과 저장에 쓰는 최종 값. 직접 친 칸과 자동으로 온 칸이 여기서 합쳐집니다.
+function values(){
+  const a = derive();
+  return {
+    place_type: state.place_type, place_area: state.place_area, place_name: state.place_name,
+    place_address: a.place_address, place_phone: a.place_phone, place_rating: a.place_rating,
+    taxi_from: a.taxi_from, taxi_to: a.taxi_to,
+    taxi_depart_at: state.taxi_depart_at, taxi_class: state.taxi_class
+  };
+}
+
+function isAuto(key){
+  if (key === "place_address" || key === "place_phone" || key === "place_rating") return true;
+  if (key === "taxi_from") return state.taxi_link === "from";
+  if (key === "taxi_to")   return state.taxi_link === "to";
+  return false;
+}
+
+// ---------- 화면 구성 ----------
+function fillSelect(el, items, placeholder){
+  el.innerHTML = "";
+  const o = document.createElement("option");
+  o.value = ""; o.textContent = placeholder;
+  el.appendChild(o);
+  items.forEach(function(v){
+    const op = document.createElement("option");
+    op.value = v; op.textContent = v;
+    el.appendChild(op);
+  });
+}
+
+function matching(){
+  return places.filter(function(p){
+    if (state.place_type && state.place_type !== ANY && p.type !== state.place_type) return false;
+    if (state.place_area && state.place_area !== ANY && p.area !== state.place_area) return false;
+    return true;
+  });
+}
+
+function refreshNames(){
+  const list = matching();
+  const keep = state.place_name;
+  fillSelect($("f-name"), list.map(function(p){ return p.name; }),
+             list.length ? "장소를 고르세요" : "조건에 맞는 장소가 없습니다");
+  const stillThere = list.some(function(p){ return p.name === keep; });
+  if (keep && !stillThere){
+    state.place_name = "";
+    $("name-note").textContent = "‘" + keep + "’ 은 바뀐 조건에 맞지 않아 비웠습니다. 도착지도 함께 비었습니다.";
+    $("name-note").className = "note note--warn";
+  } else {
+    $("f-name").value = keep;
+    $("name-note").textContent = list.length + "곳이 조건에 맞습니다.";
+    $("name-note").className = "note";
+  }
+}
+
+function buildChips(){
+  const box = $("f-class");
+  box.innerHTML = "";
+  CLASSES.forEach(function(v){
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = v;
+    b.setAttribute("aria-pressed", state.taxi_class === v ? "true" : "false");
+    b.addEventListener("click", function(){
+      state.taxi_class = (state.taxi_class === v) ? "" : v;
+      buildChips(); render();
+    });
+    box.appendChild(b);
+  });
+}
+
+function buildLinkChips(){
+  const box = $("f-link");
+  box.innerHTML = "";
+  LINKS.forEach(function(pair){
+    const key = pair[0], text = pair[1], share = pair[2];
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip";
+    b.textContent = text + " · " + share;
+    b.setAttribute("aria-pressed", state.taxi_link === key ? "true" : "false");
+    b.addEventListener("click", function(){
+      if (state.taxi_link === key) return;
+      // 방향을 바꾸면 자동이던 쪽이 풀리고 반대쪽이 잠깁니다.
+      // 두 칸이 자리를 바꾸는 셈이라, 원래 값을 잃지 않도록 옮겨 담습니다.
+      const before = values();
+      state.taxi_link = key;
+      state.taxi_from = (key === "from") ? "" : before.taxi_from;
+      state.taxi_to   = (key === "to")   ? "" : before.taxi_to;
+      buildLinkChips(); render();
+    });
+    box.appendChild(b);
+  });
+}
+
+function slotRow(key, value, auto){
+  const empty = (value === "" || value == null);
+  return '<div class="slot' + (auto ? " slot--auto" : "") + '" data-k="' + key + '">' +
+           '<span class="slot__k">' + LABEL[key] + '</span>' +
+           '<span class="slot__v' + (empty ? " empty" : "") + '">' +
+             (empty ? "······" : esc(value)) +
+           '</span>' +
+         '</div>';
+}
+
+function render(){
+  const v = values();
+
+  $("f-type").value = state.place_type;
+  $("f-area").value = state.place_area;
+  $("f-time").value = state.taxi_depart_at;
+  $("f-addr").value = v.place_address;
+  $("f-phone").value = v.place_phone;
+
+  // 잠긴 쪽은 읽기 전용이 되고 자동 딱지가 붙습니다.
+  ["from","to"].forEach(function(side){
+    const el = $("f-" + side);
+    const locked = state.taxi_link === side;
+    el.value = side === "from" ? v.taxi_from : v.taxi_to;
+    el.readOnly = locked;
+    $("tag-" + side).hidden = !locked;
+    el.placeholder = locked ? "장소 이름을 따라갑니다"
+                            : (side === "from" ? "예) 호텔 파크" : "예) 심미 호스텔");
+  });
+  $("link-note").textContent =
+    state.taxi_link === "none" ? "장소와 택시를 따로 둡니다. 두 칸 모두 직접 적으세요."
+    : (state.place_name ? "‘" + state.place_name + "’ 이 " +
+        (state.taxi_link === "from" ? "출발지" : "도착지") + " 에 자동으로 들어갔습니다."
+      : "장소 이름이 정해지면 그 칸이 자동으로 채워집니다.");
+
+  const n = ASK.filter(function(k){ return v[k]; }).length;
+  $("filled").textContent = n;
+  $("meter").innerHTML = ASK.map(function(k){
+    return '<i class="' + (v[k] ? "on" : "") + '"></i>';
+  }).join("");
+
+  $("board-place").innerHTML =
+      slotRow("place_type", v.place_type, false)
+    + slotRow("place_area", v.place_area, false)
+    + slotRow("place_name", v.place_name, false)
+    + slotRow("place_address", v.place_address, true)
+    + slotRow("place_phone", v.place_phone, true)
+    + slotRow("place_rating", v.place_rating, true);
+
+  $("board-taxi").innerHTML =
+      slotRow("taxi_from", v.taxi_from, isAuto("taxi_from"))
+    + slotRow("taxi_to", v.taxi_to, isAuto("taxi_to"))
+    + slotRow("taxi_depart_at", v.taxi_depart_at, false)
+    + slotRow("taxi_class", v.taxi_class, false);
+
+  // 사람 손 없이 바뀐 칸을 한 번 밝혔다가 끕니다.
+  Object.keys(v).forEach(function(k){
+    if (!isAuto(k)) return;
+    if (prevAuto[k] !== undefined && prevAuto[k] !== v[k]){
+      const el = document.querySelector('.slot[data-k="' + k + '"]');
+      if (el){ el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+    }
+  });
+  prevAuto = v;
+
+  $("submit").textContent = editingId ? "수정 저장" : "배차 접수";
+  $("cancel").hidden = !editingId;
+  $("log").hidden = logItems.length === 0;
+  $("log").innerHTML = logItems.slice(0, 12).map(function(t){ return '<div class="log__item">' + t + "</div>"; }).join("");
+}
+
+// ---------- 저장 ----------
+function payload(){
+  const v = values();
+  return {
+    place_type: v.place_type, place_area: v.place_area, place_name: v.place_name,
+    place_address: v.place_address, place_phone: v.place_phone,
+    place_rating: v.place_rating === "" ? null : v.place_rating,
+    taxi_link: state.taxi_link,
+    taxi_from: v.taxi_from, taxi_to: v.taxi_to,
+    taxi_depart_at: v.taxi_depart_at, taxi_class: v.taxi_class,
+    status: "dispatched"
+  };
+}
+
+function validate(){
+  const v = values();
+  const missing = ASK.filter(function(k){ return !v[k]; });
+  if (missing.length){
+    $("form-err").textContent = "아직 빈 칸이 있습니다 — " +
+      missing.map(function(k){ return LABEL[k]; }).join(", ");
+    $("form-err").hidden = false;
+    return false;
+  }
+  $("form-err").hidden = true;
+  return true;
+}
+
+function diff(before, after){
+  const out = [];
+  Object.keys(after).forEach(function(k){
+    if (k === "status") return;
+    const a = before[k] == null ? "" : String(before[k]);
+    const b = after[k]  == null ? "" : String(after[k]);
+    if (a !== b) out.push({ field:k, from:a, to:b, cascaded: isAuto(k) });
+  });
+  return out;
+}
+
+function randomDriverPhone(){
+  let s = "091";
+  for (let i = 0; i < 8; i++) s += Math.floor(Math.random() * 10);
+  return s;
+}
+
+async function save(){
+  if (!validate()) return;
+  $("submit").disabled = true;
+  $("status").textContent = "저장하는 중…";
+  const body = payload();
+  try{
+    if (editingId){
+      const before = records.find(function(r){ return r.id === editingId; }) || {};
+      const changes = diff(before, body);
+      body.driver_phone = before.driver_phone || randomDriverPhone();
+      body.revision = (before.revision || 0) + 1;
+      if (sb){
+        const res = await sb.from("booking").update(body).eq("id", editingId).select().single();
+        if (res.error) throw res.error;
+        if (changes.length){
+          await sb.from("booking_change").insert(changes.map(function(c){
+            return { booking_id: editingId, field: c.field, old_value: c.from, new_value: c.to, cascaded: c.cascaded };
+          }));
+        }
+        await loadRecords();
+      } else {
+        const i = records.findIndex(function(r){ return r.id === editingId; });
+        records[i] = Object.assign({}, records[i], body);
+        paintRecords();
+      }
+      const ref = (before.ref != null ? before.ref : "?");
+      changes.forEach(function(c){
+        logItems.unshift("<b>A-" + String(ref).padStart(4, "0") + "</b> " + LABEL[c.field] + ": " +
+          (c.from || "빈칸") + " → " + (c.to || "빈칸") +
+          (c.cascaded ? '<span class="cas">자동</span>' : ""));
+      });
+      $("status").textContent = "수정 저장 완료 · 바뀐 칸 " + changes.length + "개";
+      editingId = null;
+    } else {
+      body.driver_phone = randomDriverPhone();
+      if (sb){
+        const res = await sb.from("booking").insert(body).select().single();
+        if (res.error) throw res.error;
+        await loadRecords();
+      } else {
+        localSeq += 1;
+        records.unshift(Object.assign({ id: "local-" + localSeq, ref: localSeq, revision: 0 }, body));
+        paintRecords();
+      }
+      $("status").textContent = "배차 접수 완료 · 기사 " + body.driver_phone;
+    }
+    reset();
+  } catch (e){
+    $("form-err").textContent = "저장 실패 — " + (e.message || e);
+    $("form-err").hidden = false;
+    $("status").textContent = "";
+  }
+  $("submit").disabled = false;
+}
+
+function reset(){
+  ASK.forEach(function(k){ state[k] = ""; });
+  state.taxi_link = "from";
+  editingId = null;
+  $("name-note").textContent = "";
+  $("form-err").hidden = true;
+  refreshNames(); buildChips(); buildLinkChips(); render(); paintRecords();
+}
+
+function edit(id){
+  const r = records.find(function(x){ return x.id === id; });
+  if (!r) return;
+  editingId = id;
+  state.place_type = r.place_type || "";
+  state.place_area = r.place_area || "";
+  state.place_name = r.place_name || "";
+  state.taxi_link = r.taxi_link || "none";
+  state.taxi_from = r.taxi_from || "";
+  state.taxi_to = r.taxi_to || "";
+  state.taxi_depart_at = r.taxi_depart_at || "";
+  state.taxi_class = r.taxi_class || "";
+  $("status").textContent = "A-" + String(r.ref).padStart(4, "0") + " 수정 중";
+  refreshNames(); buildChips(); buildLinkChips(); render(); paintRecords();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ---------- 목록 ----------
+function paintRecords(){
+  const tb = $("rows");
+  $("rec-empty").hidden = records.length > 0;
+  $("rec-count").textContent = records.length ? records.length + "건" : "";
+  tb.innerHTML = records.map(function(r){
+    return '<tr class="' + (r.id === editingId ? "editing" : "") + '">' +
+      '<td class="ref">A-' + String(r.ref).padStart(4, "0") + "</td>" +
+      "<td>" + esc(r.place_name) + '<br><span class="ref">' + esc(r.place_type) + " · " + esc(r.place_area) + "</span></td>" +
+      "<td>" + esc(r.taxi_from) + "</td>" +
+      "<td>" + esc(r.taxi_to) + "</td>" +
+      "<td>" + esc(r.taxi_depart_at) + "</td>" +
+      "<td>" + esc(r.taxi_class) + "</td>" +
+      '<td class="ref">' + (r.revision ? r.revision + "회" : "—") + "</td>" +
+      '<td><button class="linkbtn" type="button" data-edit="' + esc(r.id) + '">수정</button></td>' +
+    "</tr>";
+  }).join("");
+  Array.prototype.forEach.call(tb.querySelectorAll("[data-edit]"), function(b){
+    b.addEventListener("click", function(){ edit(b.getAttribute("data-edit")); });
+  });
+}
+
+async function loadRecords(){
+  if (!sb) return;
+  const res = await sb.from("booking").select("*").order("created_at", { ascending: false }).limit(50);
+  if (!res.error) { records = res.data; paintRecords(); }
+}
+
+// ---------- Supabase ----------
+async function connect(url, key){
+  const client = window.supabase.createClient(url, key);
+  const probe = await client.from("place_directory").select("name").limit(1);
+  if (probe.error) throw probe.error;
+  sb = client;
+  const all = await sb.from("place_directory").select("*").order("name");
+  if (!all.error && all.data.length) places = all.data;
+  $("mode-badge").textContent = "Supabase 연결됨";
+  $("mode-badge").className = "badge badge--live";
+  $("config").hidden = true;
+  await loadRecords();
+  refreshNames(); render();
+}
+
+// ---------- 시작 ----------
+fillSelect($("f-type"), TYPES, "종류를 고르세요");
+fillSelect($("f-area"), AREAS, "지역을 고르세요");
+buildChips();
+buildLinkChips();
+refreshNames();
+render();
+paintRecords();
+
+$("f-type").addEventListener("change", function(e){ state.place_type = e.target.value; refreshNames(); render(); });
+$("f-area").addEventListener("change", function(e){ state.place_area = e.target.value; refreshNames(); render(); });
+$("f-name").addEventListener("change", function(e){
+  state.place_name = e.target.value;
+  $("name-note").textContent = ""; $("name-note").className = "note";
+  render();
+});
+$("f-from").addEventListener("input", function(e){ state.taxi_from = e.target.value; render(); });
+$("f-to").addEventListener("input", function(e){ state.taxi_to = e.target.value; render(); });
+$("f-time").addEventListener("input", function(e){ state.taxi_depart_at = e.target.value; render(); });
+$("submit").addEventListener("click", save);
+$("cancel").addEventListener("click", function(){ $("status").textContent = ""; reset(); });
+$("config-toggle").addEventListener("click", function(){ $("config").hidden = !$("config").hidden; });
+$("cfg-connect").addEventListener("click", async function(){
+  $("cfg-err").hidden = true;
+  try{ await connect($("cfg-url").value.trim(), $("cfg-key").value.trim()); }
+  catch(e){
+    $("cfg-err").textContent = "연결 실패 — " + (e.message || e) +
+      "  (schema.sql 을 먼저 실행했는지, URL 과 anon key 가 맞는지 확인하세요)";
+    $("cfg-err").hidden = false;
+  }
+});
+
+if (SUPABASE_URL) $("cfg-url").value = SUPABASE_URL;
+
+if (SUPABASE_URL && SUPABASE_ANON_KEY){
+  connect(SUPABASE_URL, SUPABASE_ANON_KEY).catch(function(e){
+    console.warn("Supabase 연결 실패, 로컬 모드로 계속합니다:", e.message || e);
+  });
+} else if (SUPABASE_URL){
+  $("config").hidden = false;
+  $("mode-badge").textContent = "로컬 모드 · 키 대기";
+}
+</script>
+</body>
+</html>
