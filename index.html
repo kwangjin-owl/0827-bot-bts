@@ -1101,16 +1101,30 @@ function pickOne(text){
   const got = {};
 
   const nm = findPlace(t);
-  if (nm){
+  // "호텔 파크에서 탈게요" 는 목적지를 바꾸는 말이 아니라 타는 곳을 말하는 것입니다.
+  // 출발·도착 표지가 붙은 이름은 택시 칸으로만 보냅니다.
+  const asTaxi = nm && new RegExp(nm.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") +
+    "\\s*(?:에서|부터|으로|로|까지|에)\\s*(?:출발|타|탈|탑승|내리|가|갈|도착)").test(t);
+  if (nm && !asTaxi){
     got.place_name = nm;
+    // 장소가 정해지면 그 장소가 이미 아는 값은 다시 묻지 않습니다.
     const p = places.find(function(x){ return x.name === nm; });
-    if (p){ got.place_domain = p.domain; got.place_type = p.type; }
+    if (p){
+      got.place_domain = p.domain;
+      got.place_type = p.type;
+      got.place_area = p.area;
+      if (p.price) got.place_price = p.price;
+    }
   }
 
+  // 택시 칸으로 보낸 이름은 갈래·종류 판정에서 빼냅니다.
+  // "호텔 파크에서 탈게요" 의 "호텔" 이 갈래를 숙소로 바꾸면 안 됩니다.
+  const base = (nm && asTaxi) ? t.split(nm).join(" ") : t;
+
   // 갈래. "숙소" "호텔" 같은 말이나 종류 이름에서 되짚습니다.
-  if (/숙소|묵을|잘 곳|호텔|모텔|게스트|호스텔|에어비앤비|에어비엔비/.test(t)) got.place_domain = "숙소";
-  else if (/식당|밥집|맛집|먹을|치킨|일식|중식|한식|양식|분식|주점|베이커리/.test(t)) got.place_domain = "식당";
-  else if (/관광|구경|볼거리|여행지|관광지/.test(t)) got.place_domain = "관광";
+  if (/숙소|묵을|잘 곳|호텔|모텔|게스트|호스텔|에어비앤비|에어비엔비/.test(base)) got.place_domain = "숙소";
+  else if (/식당|밥집|맛집|먹을|치킨|일식|중식|한식|양식|분식|주점|베이커리/.test(base)) got.place_domain = "식당";
+  else if (/관광|구경|볼거리|여행지|관광지/.test(base)) got.place_domain = "관광";
 
   // 종류. 데이터에 실제로 있는 이름만 인정합니다.
   const allTypes = [];
@@ -1120,7 +1134,7 @@ function pickOne(text){
   allTypes.sort(function(a,b){ return b.length - a.length; });
   for (let i = 0; i < allTypes.length; i++){
     const bare = allTypes[i].replace(/(당|집|관|장)$/, "");
-    if (t.indexOf(allTypes[i]) >= 0 || (bare.length >= 2 && t.indexOf(bare) >= 0)){
+    if (base.indexOf(allTypes[i]) >= 0 || (bare.length >= 2 && base.indexOf(bare) >= 0)){
       got.place_type = allTypes[i];
       if (!got.place_domain){
         Object.keys(TYPES_BY_DOMAIN).forEach(function(d){
@@ -1131,7 +1145,7 @@ function pickOne(text){
     }
   }
 
-  const pr = t.match(/(저렴|싼|적당|보통|비싼|고급스러운)/);
+  const pr = base.match(/(저렴|싼|적당|보통|비싼|고급스러운)/);
   if (pr) got.place_price = {"싼":"저렴","보통":"적당","고급스러운":"비싼"}[pr[1]] || pr[1];
 
   // 조건. "헬스장 있는" 은 켜고, "헬스장 없어도" 는 끕니다.
@@ -1314,7 +1328,10 @@ async function chatSend(){
       st.filters.forEach(function(f){
         heard.push(f.replace(/\s*유무$/, "").replace(/\s*가능$/, "") + " 있는 곳");
       });
-      if (box.place_domain){
+      if (box.place_name){
+        // 이미 고른 장소가 있으면 그것을 확인해 줍니다. 후보를 다시 보여주면 안 고른 줄 압니다.
+        lead = "장소는 " + box.place_name + " 입니다.\n\n";
+      } else if (box.place_domain){
         const cand = matching();
         const tail = heard.join(" · ");
         lead = (tail ? tail + josa(tail) + " " : "") + cand.length + "곳 있어요.";
@@ -1330,7 +1347,8 @@ async function chatSend(){
     }
 
     // 갈래를 막 정했으면 조건이 선택이라는 걸 한 번만 알려 줍니다.
-    if (box.place_domain && box.place_domain !== prevDomain && !st.filters.length){
+    // 조건은 후보를 좁히는 장치라, 이미 장소를 고른 뒤에는 안내할 이유가 없습니다.
+    if (box.place_domain && box.place_domain !== prevDomain && !st.filters.length && !box.place_name){
       const f = (FILTERS[box.place_domain] || []).slice(0,2)
         .map(function(x){ return x.replace(/\s*유무$/, "").replace(/\s*가능$/, ""); });
       if (f.length) lead += f.join(" · ") + " 같은 조건도 걸 수 있어요. 안 거셔도 됩니다.\n\n";
