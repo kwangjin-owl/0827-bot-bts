@@ -153,17 +153,18 @@ tr.editing{background:rgba(204,120,92,.10)}
 .foot{margin-top:64px;padding-top:24px;border-top:1px solid var(--hairline-soft);font-size:12.5px;color:var(--muted-soft);display:flex;gap:16px;flex-wrap:wrap}
 .foot a{color:var(--muted-soft)}
 
-.tabs{display:flex;gap:8px;margin-top:32px;border-bottom:1px solid var(--hairline);padding-bottom:0}
-.tab{
+.tabs{display:flex;gap:6px;margin:0 0 20px;padding:5px;background:var(--surface-card);border-radius:999px;width:fit-content;max-width:100%;flex-wrap:wrap}
+.tab{font-family:var(--sans);font-size:14.5px;font-weight:500;padding:10px 20px;border:none;border-radius:999px;background:none;color:var(--muted);cursor:pointer;transition:background .15s,color .15s}
   font-family:var(--sans);font-size:15px;font-weight:400;padding:12px 20px;cursor:pointer;
   background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);
   margin-bottom:-1px;transition:color .15s,border-color .15s;
 }
 .tab:hover{color:var(--ink)}
-.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--primary);font-weight:500}
+.tab[aria-selected="true"]{background:var(--canvas);color:var(--ink)}
 .desk{margin-top:32px}
+.col{min-width:0}
 
-.botpanel{margin-top:32px}
+.botpanel{margin-top:0}
 .chat{background:var(--surface-card);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:16px}
 .chat__log{min-height:380px;max-height:520px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-right:6px}
 .bub{max-width:76%;padding:13px 17px;border-radius:14px;font-size:14.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
@@ -238,88 +239,102 @@ tr.editing{background:rgba(204,120,92,.10)}
   <p class="err" id="cfg-err" hidden></p>
 </section>
 
-<nav class="tabs" id="tabs" role="tablist" aria-label="예약 방법">
-  <button class="tab" id="tab-form" type="button" role="tab" aria-selected="true" aria-controls="panel-form">폼으로 예약</button>
-  <button class="tab" id="tab-bot" type="button" role="tab" aria-selected="false" aria-controls="panel-bot" hidden>챗봇으로 예약</button>
-</nav>
+<main class="desk">
+  <div class="col">
+    <nav class="tabs" id="tabs" role="tablist" aria-label="예약 방법">
+      <button class="tab" id="tab-form" type="button" role="tab" aria-selected="true" aria-controls="panel-form">폼으로 예약</button>
+      <button class="tab" id="tab-bot" type="button" role="tab" aria-selected="false" aria-controls="panel-bot" hidden>챗봇으로 예약</button>
+    </nav>
 
-<main class="desk" id="panel-form" role="tabpanel" aria-labelledby="tab-form">
-  <div>
+    <div id="panel-form" role="tabpanel" aria-labelledby="tab-form">
 
-    <section class="step step--place" aria-labelledby="s1">
-      <div class="step__head">
-        <span class="step__dot" aria-hidden="true"></span>
-        <span class="step__num">01</span>
-        <span class="step__name" id="s1">어디로 가시나요</span>
-        <span class="step__hint" id="hint-place" hidden>묻는 칸 3 · 자동 칸 3</span>
-      </div>
-      <div class="fields">
-        <div class="row2">
-          <div class="field" id="wrap-type">
-            <label class="field__label" for="f-type">무엇을 하고 싶으세요</label>
-            <select id="f-type"></select>
+      <section class="step step--place" aria-labelledby="s1">
+        <div class="step__head">
+          <span class="step__dot" aria-hidden="true"></span>
+          <span class="step__num">01</span>
+          <span class="step__name" id="s1">어디로 가시나요</span>
+          <span class="step__hint" id="hint-place" hidden>묻는 칸 3 · 자동 칸 3</span>
+        </div>
+        <div class="fields">
+          <div class="row2">
+            <div class="field" id="wrap-type">
+              <label class="field__label" for="f-type">무엇을 하고 싶으세요</label>
+              <select id="f-type"></select>
+            </div>
+            <div class="field" id="wrap-area">
+              <label class="field__label" for="f-area">어느 지역으로</label>
+              <select id="f-area"></select>
+            </div>
           </div>
-          <div class="field" id="wrap-area">
-            <label class="field__label" for="f-area">어느 지역으로</label>
-            <select id="f-area"></select>
+          <div class="field" id="wrap-name">
+            <label class="field__label" for="f-name">장소</label>
+            <select id="f-name"></select>
+            <p class="note" id="name-note"></p>
+          </div>
+          <div class="placecard" id="placecard" hidden>
+            <div class="placecard__name" id="pc-name"></div>
+            <div class="placecard__meta" id="pc-addr"></div>
+            <div class="placecard__meta" id="pc-more"></div>
           </div>
         </div>
-        <div class="field" id="wrap-name">
-          <label class="field__label" for="f-name">장소</label>
-          <select id="f-name"></select>
-          <p class="note" id="name-note"></p>
+      </section>
+
+      <section class="step step--taxi" aria-labelledby="s2">
+        <div class="step__head">
+          <span class="step__dot" aria-hidden="true"></span>
+          <span class="step__num">02</span>
+          <span class="step__name" id="s2">택시 부르기</span>
+          <span class="step__hint" id="hint-taxi" hidden>묻는 칸 4 · 그중 1칸은 장소에서 옴</span>
         </div>
-        <div class="placecard" id="placecard" hidden>
-          <div class="placecard__name" id="pc-name"></div>
-          <div class="placecard__meta" id="pc-addr"></div>
-          <div class="placecard__meta" id="pc-more"></div>
+        <div class="fields">
+          <div class="field" id="wrap-link">
+            <span class="field__label" id="link-label">택시를 어떻게 쓰시나요</span>
+            <div class="chips" role="group" aria-labelledby="link-label" id="f-link"></div>
+          </div>
+          <div class="row2">
+            <div class="field" id="wrap-from">
+              <label class="field__label" for="f-from">어디서 타세요 <span class="tag" id="tag-from" hidden>자동</span></label>
+              <div class="locked" id="lock-from" hidden></div>
+              <input id="f-from" type="text" placeholder="예) 호텔 파크" autocomplete="off">
+            </div>
+            <div class="field" id="wrap-to">
+              <label class="field__label" for="f-to">어디서 내리세요 <span class="tag" id="tag-to" hidden>자동</span></label>
+              <div class="locked" id="lock-to" hidden></div>
+              <input id="f-to" type="text" placeholder="예) 심미 호스텔" autocomplete="off">
+            </div>
+          </div>
+          <div class="field" id="wrap-time" style="max-width:220px">
+            <label class="field__label" for="f-time">언제 출발하세요</label>
+            <input id="f-time" type="time">
+          </div>
+          <div class="field" id="wrap-class">
+            <span class="field__label" id="taxi-class-label">택시 종류</span>
+            <div class="chips" role="group" aria-labelledby="taxi-class-label" id="f-class"></div>
+          </div>
+          <p class="err" id="form-err" hidden></p>
+          <div class="actions">
+            <button class="btn" id="submit" type="button">택시 부르기</button>
+            <button class="btn btn--ghost" id="cancel" type="button" hidden>변경 취소</button>
+            <span class="status" id="status"></span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+    <section class="botpanel" id="panel-bot" role="tabpanel" aria-labelledby="tab-bot" hidden>
+      <div class="chat">
+        <div class="chat__log" id="chat-log" role="log" aria-live="polite" aria-label="챗봇 대화"></div>
+        <div class="chat__quick" id="chat-quick" hidden></div>
+        <div class="chat__bar">
+          <input id="chat-input" type="text" autocomplete="off"
+                 placeholder="어디로 가고 싶은지 말씀해 주세요">
+          <button class="btn" id="chat-send" type="button">보내기</button>
+          <button class="btn btn--ghost" id="chat-reset" type="button">처음부터</button>
         </div>
       </div>
+      <p class="botnote" id="bot-note"></p>
     </section>
-
-    <section class="step step--taxi" aria-labelledby="s2">
-      <div class="step__head">
-        <span class="step__dot" aria-hidden="true"></span>
-        <span class="step__num">02</span>
-        <span class="step__name" id="s2">택시 부르기</span>
-        <span class="step__hint" id="hint-taxi" hidden>묻는 칸 4 · 그중 1칸은 장소에서 옴</span>
-      </div>
-      <div class="fields">
-        <div class="field" id="wrap-link">
-          <span class="field__label" id="link-label">택시를 어떻게 쓰시나요</span>
-          <div class="chips" role="group" aria-labelledby="link-label" id="f-link"></div>
-        </div>
-        <div class="row2">
-          <div class="field" id="wrap-from">
-            <label class="field__label" for="f-from">어디서 타세요 <span class="tag" id="tag-from" hidden>자동</span></label>
-            <div class="locked" id="lock-from" hidden></div>
-            <input id="f-from" type="text" placeholder="예) 호텔 파크" autocomplete="off">
-          </div>
-          <div class="field" id="wrap-to">
-            <label class="field__label" for="f-to">어디서 내리세요 <span class="tag" id="tag-to" hidden>자동</span></label>
-            <div class="locked" id="lock-to" hidden></div>
-            <input id="f-to" type="text" placeholder="예) 심미 호스텔" autocomplete="off">
-          </div>
-        </div>
-        <div class="field" id="wrap-time" style="max-width:220px">
-          <label class="field__label" for="f-time">언제 출발하세요</label>
-          <input id="f-time" type="time">
-        </div>
-        <div class="field" id="wrap-class">
-          <span class="field__label" id="taxi-class-label">택시 종류</span>
-          <div class="chips" role="group" aria-labelledby="taxi-class-label" id="f-class"></div>
-        </div>
-        <p class="err" id="form-err" hidden></p>
-        <div class="actions">
-          <button class="btn" id="submit" type="button">택시 부르기</button>
-          <button class="btn btn--ghost" id="cancel" type="button" hidden>변경 취소</button>
-          <span class="status" id="status"></span>
-        </div>
-      </div>
-    </section>
-
   </div>
-
   <aside id="side">
     <div class="board" id="summary">
       <div class="board__head">
@@ -350,20 +365,6 @@ tr.editing{background:rgba(204,120,92,.10)}
     </div>
   </aside>
 </main>
-
-<section class="botpanel" id="panel-bot" role="tabpanel" aria-labelledby="tab-bot" hidden>
-  <div class="chat">
-    <div class="chat__log" id="chat-log" role="log" aria-live="polite" aria-label="챗봇 대화"></div>
-    <div class="chat__quick" id="chat-quick" hidden></div>
-    <div class="chat__bar">
-      <input id="chat-input" type="text" autocomplete="off"
-             placeholder="어디로 가고 싶은지 말씀해 주세요">
-      <button class="btn" id="chat-send" type="button">보내기</button>
-      <button class="btn btn--ghost" id="chat-reset" type="button">처음부터</button>
-    </div>
-  </div>
-  <p class="botnote" id="bot-note"></p>
-</section>
 
 <section class="records">
   <div class="records__head">
@@ -1045,6 +1046,12 @@ async function chatSend(){
 
   const st = chatSlots();
   const box = st.box, ever = st.ever;
+
+  // 봇이 받아낸 칸을 폼 상태에 그대로 옮깁니다.
+  // 오른쪽 요약이 같이 차오르고, 폼 탭으로 넘어가면 이어서 고칠 수 있습니다.
+  state.taxi_link = "none";
+  ASK.forEach(function(k){ state[k] = box[k] || ""; });
+  refreshNames(); buildChips(); buildLinkChips(); render();
   const missing = ASK.filter(function(k){ return !box[k]; });
   const head = LAB ? labHeader(box, ever) : "";
 
@@ -1103,6 +1110,7 @@ function chatReset(){
 }
 
 function showTab(which){
+  // 왼쪽 칼럼만 바뀝니다. 오른쪽 예약 요약은 두 방식 모두에서 그대로 차오릅니다.
   const bot = which === "bot";
   $("panel-form").hidden = bot;
   $("panel-bot").hidden = !bot;
@@ -1113,8 +1121,10 @@ function showTab(which){
 // 강사 지침 - 온라인은 폼 UI 로 유저가 입력하고 DB 에 붙습니다.
 // 챗봇은 로컬 테스트용이므로 공개 화면에서는 탭 자체를 감춥니다.
 // 비교 실습은 /test 에서 합니다. 진짜 Agent Bot 은 터미널의 Gradio 입니다.
-$("tabs").hidden = !LAB;
-$("tab-bot").hidden = !LAB;
+// 탭 묶음은 메인에서도 보입니다. 폼과 챗봇 둘 다 손님이 쓰는 기능입니다.
+$("tabs").hidden = false;
+// 챗봇 탭은 손님 화면에도 그대로 둡니다. 말로 예약하는 것은 실습 장치가 아니라 기능입니다.
+$("tab-bot").hidden = false;
 if (!LAB) $("panel-bot").hidden = true;
 $("tab-form").addEventListener("click", function(){ showTab("form"); });
 $("tab-bot").addEventListener("click", function(){ showTab("bot"); });
