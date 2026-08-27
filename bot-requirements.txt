@@ -1,0 +1,10 @@
+# Gradio 봇(app.py)을 로컬에서 돌릴 때 필요한 것.
+# 이름이 requirements.txt 가 아닌 이유 - 버셀이 이 저장소를 파이썬 프로젝트로
+# 오해하지 않게 하려는 것입니다. 웹은 빌드가 필요 없습니다.
+#
+#   [ Windows ]  .\.venv\Scripts\python.exe -m pip install -r bot-requirements.txt
+#   [ Mac ]      ./.venv/bin/python -m pip install -r bot-requirements.txt
+gradio==5.14.0
+huggingface_hub==0.25.2
+google-generativeai==0.8.6
+python-dotenv==1.0.1
