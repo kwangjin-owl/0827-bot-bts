@@ -65,6 +65,11 @@ h1{font-family:var(--serif);font-size:44px;font-weight:400;letter-spacing:-.035e
 .field{display:grid;gap:8px;min-width:0}
 .field__label{font-size:13.5px;font-weight:500;color:var(--body-strong);display:flex;align-items:center;gap:8px}
 .tag{font-family:var(--mono);font-size:10px;letter-spacing:.08em;padding:3px 7px;border-radius:999px;font-weight:400;background:var(--cream-strong);color:var(--muted)}
+.tag--opt{background:var(--cream-strong);color:var(--muted)}
+.tag--auto{background:rgba(232,165,90,.24);color:#7a4d12}
+.samechk{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none}
+.samechk input{width:auto;margin:0;padding:0;accent-color:var(--primary);cursor:pointer}
+.samechk:hover{color:var(--ink)}
 
 input,select{font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--canvas);border:1px solid var(--hairline);border-radius:var(--radius);padding:11px 14px;width:100%;transition:border-color .15s}
 input:hover,select:hover{border-color:var(--cream-strong)}
@@ -252,29 +257,30 @@ tr.editing{background:rgba(204,120,92,.10)}
         </div>
         <div class="fields">
           <div class="field" id="wrap-domain">
-            <span class="field__label">갈래 <span class="tag tag--req">필수</span></span>
+            <span class="field__label">갈래</span>
             <div class="chips" role="group" aria-label="장소 갈래" id="f-domain"></div>
+            <p class="note" id="domain-note">먼저 골라 주세요. 고르시면 그에 맞는 칸이 나옵니다.</p>
           </div>
           <div class="row2">
             <div class="field" id="wrap-type">
-              <label class="field__label" for="f-type">종류 <span class="tag tag--req">필수</span></label>
+              <label class="field__label" for="f-type">종류</label>
               <select id="f-type"></select>
             </div>
             <div class="field" id="wrap-area">
-              <label class="field__label" for="f-area">지역 <span class="tag tag--req">필수</span></label>
+              <label class="field__label" for="f-area">지역</label>
               <select id="f-area"></select>
             </div>
           </div>
           <div class="field" id="wrap-price">
-            <label class="field__label" for="f-price">가격대 <span class="tag tag--req">필수</span></label>
+            <label class="field__label" for="f-price">가격대</label>
             <select id="f-price"></select>
           </div>
           <div class="field" id="wrap-filter">
-            <span class="field__label" id="filter-label">조건 <span class="tag tag--opt">선택 · 비워도 됩니다</span></span>
+            <span class="field__label" id="filter-label">조건 <span class="tag tag--opt">안 채워도 됩니다</span></span>
             <div class="chips" role="group" aria-labelledby="filter-label" id="f-filter"></div>
           </div>
           <div class="field" id="wrap-name">
-            <label class="field__label" for="f-name">장소 <span class="tag tag--req">필수</span></label>
+            <label class="field__label" for="f-name">장소</label>
             <select id="f-name"></select>
             <p class="note" id="name-note"></p>
           </div>
@@ -298,24 +304,24 @@ tr.editing{background:rgba(204,120,92,.10)}
         <div class="fields">
           <div class="row2">
             <div class="field" id="wrap-from">
-              <label class="field__label" for="f-from">타는 곳 <span class="tag tag--req" id="req-from">필수</span><span class="tag tag--auto" id="tag-from" hidden>자동 · 장소 연결됨</span></label>
+              <label class="field__label" for="f-from">타는 곳 <span class="tag tag--auto" id="tag-from" hidden>자동</span></label>
               <div class="locked" id="lock-from" hidden></div>
               <input id="f-from" type="text" placeholder="예) 호텔 파크" autocomplete="off">
-              <p class="note"><button class="linkbtn" type="button" id="put-from" hidden></button></p>
+              <label class="samechk" id="wrap-chk-from" hidden><input type="checkbox" id="chk-from"><span id="lbl-chk-from"></span></label>
             </div>
             <div class="field" id="wrap-to">
-              <label class="field__label" for="f-to">내리는 곳 <span class="tag tag--req" id="req-to">필수</span><span class="tag tag--auto" id="tag-to" hidden>자동 · 장소 연결됨</span></label>
+              <label class="field__label" for="f-to">내리는 곳 <span class="tag tag--auto" id="tag-to" hidden>자동</span></label>
               <div class="locked" id="lock-to" hidden></div>
               <input id="f-to" type="text" placeholder="예) 심미 호스텔" autocomplete="off">
-              <p class="note"><button class="linkbtn" type="button" id="put-to" hidden></button></p>
+              <label class="samechk" id="wrap-chk-to" hidden><input type="checkbox" id="chk-to"><span id="lbl-chk-to"></span></label>
             </div>
           </div>
           <div class="field" id="wrap-time" style="max-width:220px">
-            <label class="field__label" for="f-time">출발 시간 <span class="tag tag--req">필수</span></label>
+            <label class="field__label" for="f-time">출발 시간</label>
             <input id="f-time" type="time">
           </div>
           <div class="field" id="wrap-class">
-            <span class="field__label" id="taxi-class-label">택시 종류 <span class="tag tag--req">필수</span></span>
+            <span class="field__label" id="taxi-class-label">택시 종류</span>
             <div class="chips" role="group" aria-labelledby="taxi-class-label" id="f-class"></div>
           </div>
           <p class="err" id="form-err" hidden></p>
@@ -541,6 +547,13 @@ const esc = function(s){
   });
 };
 const refOf = function(r){ return "TX-" + String(r.ref).padStart(4,"0"); };
+// 한국어 조사는 앞 글자 받침에 따라 갈립니다. 받침이 있으면 "으로".
+const josa = function(w){
+  const c = String(w).charCodeAt(String(w).length - 1) - 0xAC00;
+  if (c < 0 || c > 11171) return "로";
+  const jong = c % 28;
+  return (jong === 0 || jong === 8) ? "로" : "으로";
+};
 
 // ---------- 장소에서 따라오는 값 ----------
 // 장소 이름이 출발지로 갈지 도착지로 갈지는 taxi_link 가 정합니다.
@@ -738,17 +751,15 @@ function render(){
     $("lock-" + side).hidden = !locked;
     $("tag-" + side).hidden = !locked;
     $("req-" + side).hidden = locked;   // 자동으로 채워지는 칸은 필수 표시를 뗍니다
-    const btn = $("put-" + side);
+    // 체크박스 하나로 켜고 끕니다. 버튼이 상황에 따라 뜻이 바뀌면 헷갈립니다.
+    $("wrap-chk-" + side).hidden = !v.place_name;
+    $("chk-" + side).checked = locked;
+    $("lbl-chk-" + side).textContent = v.place_name ? "‘" + v.place_name + "’ 과 같게" : "";
     if (locked){
       $("lock-" + side).textContent = val || "위에서 장소를 고르면 채워집니다";
       $("lock-" + side).className = val ? "locked" : "locked is-empty";
-      btn.hidden = false;
-      btn.textContent = "연결 끊기";
     } else {
       $("f-" + side).value = val;
-      // 장소를 골랐고 이 칸이 아직 안 잠겼을 때만 넣기 버튼을 보여 줍니다.
-      btn.hidden = !v.place_name;
-      btn.textContent = v.place_name ? "‘" + v.place_name + "’ 넣기" : "";
     }
   });
 
@@ -761,12 +772,16 @@ function render(){
 
   const priceOn = ASK.indexOf("place_price") >= 0;
   // 각 단계에 필수 몇 칸인지 알려 줍니다. 얼마나 남았는지 가늠이 됩니다.
+  // 다 필수인 칸에 "필수" 딱지를 붙이면 정보가 아닙니다.
+  // 대신 몇 칸이 남았는지를 알려 줍니다. 그게 사람이 궁금한 것입니다.
+  $("domain-note").hidden = !!state.place_domain;
   if (state.place_domain){
-    const pReq = ASK.filter(function(k){ return k.indexOf("place") === 0; }).length;
-    const tReq = ASK.filter(function(k){ return k.indexOf("taxi") === 0; }).length;
-    const tAuto = (state.taxi_link === "none") ? 0 : 1;
-    $("hint-place").textContent = "필수 " + pReq + " · 선택 1 · 자동 3";
-    $("hint-taxi").textContent  = "필수 " + (tReq - tAuto) + (tAuto ? " · 자동 2" : " · 자동 1");
+    const left = function(pre){
+      return ASK.filter(function(k){ return k.indexOf(pre) === 0 && !v[k]; }).length;
+    };
+    const lp = left("place"), lt = left("taxi");
+    $("hint-place").textContent = lp ? lp + "칸 남았어요" : "다 채웠어요";
+    $("hint-taxi").textContent  = lt ? lt + "칸 남았어요" : "다 채웠어요";
     $("hint-place").hidden = false;
     $("hint-taxi").hidden = false;
   } else {
@@ -1211,8 +1226,14 @@ async function chatSend(){
     state.place_filters = [];
   }
 
-  const prevName = chatSlots().box.place_name || "";
-  let got = pick(text);
+  const prevBox = chatSlots().box;
+  const prevName = prevBox.place_name || "";
+  const prevDomain = prevBox.place_domain || "";
+
+  // "거기서 출발할게요" 처럼 대명사로 가리키면 지금 장소 이름으로 바꿔 놓고 읽습니다.
+  let src = text;
+  if (prevName) src = src.replace(/거기|여기|그곳|그 곳|이곳|이 곳/g, prevName);
+  let got = pick(src);
   // 방금 되물은 칸에 "네" 라고만 답하면 그 칸을 장소 이름으로 채웁니다.
   if ((lastAsked === "taxi_to" || lastAsked === "taxi_from") &&
       /^(네|예|응|어|그래|맞아|바꿔|바꿔줘|그렇게)/.test(text.trim()) &&
@@ -1269,43 +1290,66 @@ async function chatSend(){
   if (missing.length){
     lastAsked = missing[0];
 
-    // 알아들은 것을 먼저 되짚어 줍니다. 그래야 무시당한 느낌이 안 듭니다.
-    const heard = [];
-    if (box.place_domain) heard.push(box.place_domain === "관광" ? "관광지" : box.place_domain);
-    if (box.place_type)   heard.push(box.place_type);
-    if (box.place_price)  heard.push(box.place_price);
-    if (box.place_area)   heard.push(box.place_area);
-    st.filters.forEach(function(f){
-      heard.push(f.replace(/\s*유무$/, "").replace(/\s*가능$/, "") + " 있는 곳");
-    });
-
     let lead = "";
-    if (box.place_domain){
-      const cand = matching();
-      // 한국어 조사는 앞 글자 받침에 따라 갈립니다. 받침이 있으면 "으로".
-      const josa = function(w){
-        const c = w.charCodeAt(w.length - 1) - 0xAC00;
-        if (c < 0 || c > 11171) return "로";
-        const jong = c % 28;
-        return (jong === 0 || jong === 8) ? "로" : "으로";   // 받침 없음 / ㄹ 받침
-      };
-      const tail = heard.length ? heard.join(" · ") : "";
-      lead = (tail ? tail + josa(tail) + " " : "") + cand.length + "곳 있어요.";
-      // 시나리오의 "(후보 받고)" 가 이것입니다. 좁혀졌으면 실제 이름을 보여 줍니다.
-      if (!box.place_name && cand.length && cand.length <= 6){
-        lead += "\n" + cand.map(function(p){ return p.name; }).join(", ");
-      } else if (!box.place_name && cand.length){
-        lead += " 예를 들면 " + cand.slice(0,3).map(function(p){ return p.name; }).join(", ") + " 같은 곳이요.";
+    const justPicked = box.place_name && box.place_name !== prevName;
+
+    if (justPicked){
+      // 자동으로 채운 값을 알려 줍니다. 사람이 적을 칸이 아니라는 걸 밝히는 것입니다.
+      const pp = places.find(function(x){ return x.name === box.place_name; });
+      lead = box.place_name + josa(box.place_name) + " 정했어요.\n";
+      if (pp){
+        const auto = [];
+        if (pp.address) auto.push("주소 " + pp.address);
+        if (pp.phone)   auto.push("연락처 " + pp.phone);
+        if (pp.rating)  auto.push("평점 " + pp.rating);
+        if (auto.length) lead += auto.join(" · ") + " 은 제가 채웠어요.\n";
       }
-      lead += "\n\n";
-    } else if (heard.length){
-      lead = heard.join(" · ") + "\n\n";
+      lead += "\n";
+    } else {
+      // 알아들은 것과 남은 후보를 되짚어 줍니다.
+      const heard = [];
+      if (box.place_domain) heard.push(box.place_domain === "관광" ? "관광지" : box.place_domain);
+      if (box.place_type)   heard.push(box.place_type);
+      if (box.place_price)  heard.push(box.place_price);
+      if (box.place_area)   heard.push(box.place_area);
+      st.filters.forEach(function(f){
+        heard.push(f.replace(/\s*유무$/, "").replace(/\s*가능$/, "") + " 있는 곳");
+      });
+      if (box.place_domain){
+        const cand = matching();
+        const tail = heard.join(" · ");
+        lead = (tail ? tail + josa(tail) + " " : "") + cand.length + "곳 있어요.";
+        if (cand.length && cand.length <= 6){
+          lead += "\n" + cand.map(function(p){ return p.name; }).join(", ");
+        } else if (cand.length){
+          lead += " 예를 들면 " + cand.slice(0,3).map(function(p){ return p.name; }).join(", ") + " 같은 곳이요.";
+        }
+        lead += "\n\n";
+      } else if (heard.length){
+        lead = heard.join(" · ") + "\n\n";
+      }
     }
 
+    // 갈래를 막 정했으면 조건이 선택이라는 걸 한 번만 알려 줍니다.
+    if (box.place_domain && box.place_domain !== prevDomain && !st.filters.length){
+      const f = (FILTERS[box.place_domain] || []).slice(0,2)
+        .map(function(x){ return x.replace(/\s*유무$/, "").replace(/\s*가능$/, ""); });
+      if (f.length) lead += f.join(" · ") + " 같은 조건도 걸 수 있어요. 안 거셔도 됩니다.\n\n";
+    }
+
+    // 남은 칸을 알려 줍니다. 유저가 말했는데 제가 잊은 것은 잊었다고 밝힙니다.
+    // 그래야 "안 물어본 것" 과 "기억에서 밀려난 것" 이 구분됩니다.
+    const done = ASK.length - missing.length;
+    const everCount = ASK.filter(function(k){ return ever[k]; }).length;
+    const bar = (everCount > done)
+      ? "필수 " + ASK.length + "칸 중 " + everCount + "칸 말씀하셨는데 제가 기억하는 건 " +
+        done + "칸이에요.\n앞 대화를 " + HIST + "턴까지만 봐서 그렇습니다. 다시 한 번 알려 주세요.\n"
+      : "필수 " + ASK.length + "칸 중 " + done + "칸 채웠어요. " + missing.length + "칸 남았습니다.\n";
+
     const body = (STYLE === "all_at_once")
-      ? "아직 알려주실 것이 있어요.\n" + missing.map(function(k){ return "· " + QUESTION[k]; }).join("\n")
+      ? missing.map(function(k){ return "· " + QUESTION[k]; }).join("\n")
       : QUESTION[missing[0]];
-    bubble("bot", head + esc(lead + body));
+    bubble("bot", head + esc(lead + bar + body));
     return;
   }
 
@@ -1340,9 +1384,14 @@ async function chatSend(){
     console.error(e);
     return;
   }
+  const autoLine = [];
+  if (row.place_address) autoLine.push(row.place_address);
+  if (row.place_rating)  autoLine.push("평점 " + row.place_rating);
   bubble("bot", head + "예약했습니다. <b>" + esc(ref) + "</b>\n" +
+    esc(row.place_name) + (autoLine.length ? esc("  (" + autoLine.join(" · ") + ")") : "") + "\n" +
     esc(row.taxi_from + " → " + row.taxi_to) + "\n" +
-    esc(row.taxi_depart_at + " · " + row.taxi_class + " 택시") + "\n기사님 " + esc(row.driver_phone));
+    esc(row.taxi_depart_at + " · " + row.taxi_class + " 택시") +
+    "\n기사님 " + esc(row.driver_phone) + "  <b>자동</b>");
   turns = [];
 }
 
@@ -1436,10 +1485,10 @@ $("f-name").addEventListener("change", function(e){
 });
 $("f-from").addEventListener("input", function(e){ state.taxi_from = e.target.value; render(); });
 $("f-to").addEventListener("input", function(e){ state.taxi_to = e.target.value; render(); });
-$("put-from").addEventListener("click", function(){
-  state.taxi_link === "from" ? unputPlace() : putPlace("from"); });
-$("put-to").addEventListener("click", function(){
-  state.taxi_link === "to" ? unputPlace() : putPlace("to"); });
+$("chk-from").addEventListener("change", function(e){
+  e.target.checked ? putPlace("from") : unputPlace(); });
+$("chk-to").addEventListener("change", function(e){
+  e.target.checked ? putPlace("to") : unputPlace(); });
 $("f-time").addEventListener("input", function(e){ state.taxi_depart_at = e.target.value; render(); });
 $("submit").addEventListener("click", save);
 $("cancel").addEventListener("click", function(){ reset(); });
