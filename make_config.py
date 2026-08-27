@@ -95,15 +95,18 @@ def build_slots():
 
     slots = {
         "ask": [[p[0], p[1]] for p in ask],
+        "domains": s.get("DOMAIN_SLOTS", {}),
+        "filters": s.get("FILTERS", {}),
         "auto": s.get("AUTO_SLOTS", {}),
         "ask_style": s.get("ASK_STYLE", ""),
         "history_turns": s.get("HISTORY_TURNS", 0),
     }
     with open(SLOTS_PATH, "w", encoding="utf-8") as f:
         json.dump(slots, f, ensure_ascii=False, indent=2)
-    print("slots.json 을 만들었습니다.  묻는 칸 {}개 · 자동 칸 {}개".format(
-        len(slots["ask"]), len(slots["auto"])))
-    print("  " + " / ".join(names))
+    print("slots.json 을 만들었습니다.")
+    print("  묻는 칸 {}개 · 자동 칸 {}개".format(len(slots["ask"]), len(slots["auto"])))
+    for dom, ss in slots["domains"].items():
+        print("  {} {}칸 · 조건 {}개".format(dom, len(ss), len(slots["filters"].get(dom, []))))
     return slots
 
 

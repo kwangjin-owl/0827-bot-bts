@@ -256,15 +256,27 @@ tr.editing{background:rgba(204,120,92,.10)}
           <span class="step__hint" id="hint-place" hidden>묻는 칸 3 · 자동 칸 3</span>
         </div>
         <div class="fields">
+          <div class="field" id="wrap-domain">
+            <span class="field__label" id="domain-label">무엇을 찾으세요</span>
+            <div class="chips" role="group" aria-labelledby="domain-label" id="f-domain"></div>
+          </div>
           <div class="row2">
             <div class="field" id="wrap-type">
-              <label class="field__label" for="f-type">무엇을 하고 싶으세요</label>
+              <label class="field__label" for="f-type">종류</label>
               <select id="f-type"></select>
             </div>
             <div class="field" id="wrap-area">
               <label class="field__label" for="f-area">어느 지역으로</label>
               <select id="f-area"></select>
             </div>
+          </div>
+          <div class="field" id="wrap-price">
+            <label class="field__label" for="f-price">가격대</label>
+            <select id="f-price"></select>
+          </div>
+          <div class="field" id="wrap-filter">
+            <span class="field__label" id="filter-label">이런 곳이면 좋겠어요 <span class="tag">선택</span></span>
+            <div class="chips" role="group" aria-labelledby="filter-label" id="f-filter"></div>
           </div>
           <div class="field" id="wrap-name">
             <label class="field__label" for="f-name">장소</label>
@@ -275,6 +287,7 @@ tr.editing{background:rgba(204,120,92,.10)}
             <div class="placecard__name" id="pc-name"></div>
             <div class="placecard__meta" id="pc-addr"></div>
             <div class="placecard__meta" id="pc-more"></div>
+            <div class="placecard__meta" id="pc-attrs"></div>
           </div>
         </div>
       </section>
@@ -413,84 +426,83 @@ const ON_WEB = location.protocol.indexOf("http") === 0;
 const LAB_URL  = ON_WEB ? "/test" : location.pathname + "?lab=1";
 const HOME_URL = ON_WEB ? "/" : location.pathname;
 
-const FALLBACK_PLACES = [
-  ["N 서울 타워","랜드마크","서울 중앙","서울 용산구 남산공원길 105","02-3455-9277",4.5],
-  ["광화문 광장","랜드마크","서울 북쪽","서울 종로구 세종대로 172","02-2133-2657",4.4],
-  ["남산골 한옥 마을","랜드마크","서울 중앙","서울 중구 퇴계로34길 28","02-2261-0517",4.3],
-  ["동대문 (흥인지문)","랜드마크","서울 북쪽","서울 종로구 종로 288","02-2148-1807",4.2],
-  ["러브뮤지엄","박물관","서울 서쪽","서울 마포구 양화로 162","02-333-3211",3.8],
-  ["롯데월드 아쿠아리움","동물원","서울 동쪽","서울 송파구 올림픽로 300","1661-2000",4.4],
-  ["롯데월드타워&몰","쇼핑","서울 동쪽","서울 송파구 올림픽로 300","1661-2000",4.6],
-  ["봉은사","랜드마크","서울 남쪽","서울 강남구 봉은사로 531","02-3218-4800",4.5],
-  ["북악산 서울 성곽","랜드마크","서울 북쪽","서울 종로구 창의문로 118","02-730-9924",4.4],
-  ["삼청각","랜드마크","서울 북쪽","서울 성북구 대사관로 3","02-765-3700",4.2],
-  ["삼청동길","랜드마크","서울 북쪽","서울 종로구 삼청로 일대","02-2148-1114",4.3],
-  ["서울스카이","랜드마크","서울 동쪽","서울 송파구 올림픽로 300","1661-2000",4.6],
-  ["서울중앙성원","랜드마크","서울 중앙","서울 용산구 우사단로10길 39","02-793-6908",4.3],
-  ["석촌호수","공원","서울 동쪽","서울 송파구 삼학사로 136","02-412-0190",4.5],
-  ["세종대왕 동상","랜드마크","서울 북쪽","서울 종로구 세종대로 175","02-2133-2641",4.4],
-  ["신세계 백화점 본점","쇼핑","서울 중앙","서울 중구 소공로 63","1588-1234",4.4],
-  ["신촌","기타","서울 북쪽","서울 서대문구 신촌로 일대","02-330-1114",4.0],
-  ["예술의전당","박물관","서울 남쪽","서울 서초구 남부순환로 2406","02-580-1300",4.6],
-  ["운현궁","랜드마크","서울 북쪽","서울 종로구 삼일대로 464","02-766-9090",4.2],
-  ["익선동한옥거리","기타","서울 북쪽","서울 종로구 수표로28길 일대","02-2148-1114",4.3],
-  ["청와대","랜드마크","서울 북쪽","서울 종로구 청와대로 1","02-3701-7200",4.5],
-  ["코엑스 아쿠아리움","동물원","서울 남쪽","서울 강남구 영동대로 513","02-6002-6200",4.3],
-  ["하늘공원","공원","서울 서쪽","서울 마포구 하늘공원로 95","02-300-5501",4.5],
-  ["홍대앞 거리","랜드마크","서울 서쪽","서울 마포구 양화로 일대","02-3153-8114",4.2]
-].map(function(r){return {name:r[0],type:r[1],area:r[2],address:r[3],phone:r[4],rating:r[5]};});
+// 장소 218곳. WoS 대화에서 뽑았습니다.
+// [도메인, 이름, 종류, 지역, 가격대, 주소, 연락처, 평점, 조건번호들]
+// Supabase 에 연결하면 place_directory 를 대신 읽습니다.
+const ATTR_NAMES = ["역사적","경치 좋은","교육적","문화 예술","주차 가능","도보 가능",
+  "스파 유무","인터넷 가능","흡연 가능","조식 가능","헬스장 유무","수영장 유무",
+  "야외석 유무","주류 판매"];
+const DOM_NAMES = ["관광","숙소","식당"];
+const RAW_PLACES = [[0,"63시티","랜드마크","서울 중앙","","서울 영등포구 10295","7116941083","4",[5]],[0,"IFC 몰","쇼핑","서울 중앙","","서울 영등포구 92450","2638830380","4",[4,5]],[0,"N 서울 타워","랜드마크","서울 중앙","","서울 용산구 50248","437220560","4",[4]],[0,"가로수길","기타","서울 남쪽","","서울 강남구 32611","3172381935","4",[]],[0,"경복궁","박물관","서울 북쪽","","서울 종로구 05481","108270327","4.5",[]],[0,"경희대학교 서울캠퍼스","랜드마크","서울 북쪽","","서울 동대문구 13071","1017698533","4.5",[2]],[0,"고투 몰","쇼핑","서울 남쪽","","서울 서초구 40922","8165125664","4",[]],[0,"광장시장","쇼핑","서울 북쪽","","서울 종로구 38214","2200053166","4.3",[]],[0,"광화문","랜드마크","서울 북쪽","","서울 종로구 92269","3346840443","4",[4]],[0,"광화문 광장","랜드마크","서울 북쪽","","서울 종로구 71227","1785810069","4",[4,5]],[0,"국립 고궁 박물관","박물관","서울 북쪽","","서울 성동구 12258","9536237561","4",[2,4,5]],[0,"국립 민속 박물관","박물관","서울 북쪽","","서울 종로구 03556","4727266301","4.5",[]],[0,"국립국악원","박물관","서울 남쪽","","서울 서초구 90330","7269223521","4.5",[2,4,5]],[0,"국립중앙박물관","박물관","서울 중앙","","서울 용산구 40405","4159057375","4.5",[2]],[0,"국립현대미술관 서울관","박물관","서울 북쪽","","서울 종로구 49530","6711071397","4.5",[3,4]],[0,"그레뱅뮤지엄","박물관","서울 중앙","","서울 중구 71565","1096124649","4.5",[2]],[0,"낙산 공공 미술","랜드마크","서울 북쪽","","서울시 강서구 92400","2415411058","4",[]],[0,"낙산공원","공원","서울 북쪽","","서울 종로구 08284","1265795355","4.5",[1,4]],[0,"남대문시장","쇼핑","서울 중앙","","서울 중구 29251","7617168473","4",[5]],[0,"남산 공원","공원","서울 중앙","","서울 용산구 97340","5331312330","4.5",[]],[0,"남산 케이블카","교통편","서울 중앙","","서울 중구 94199","7734959285","3.5",[4,5]],[0,"남산골 한옥 마을","랜드마크","서울 중앙","","서울 중구 85530","3720386527","4",[0]],[0,"노량진 수산물 도매시장","쇼핑","서울 서쪽","","서울 동작구 93806","6182006591","4",[4]],[0,"대한민국 역사 박물관","박물관","서울 북쪽","","서울 종로구 09127","3368922918","4.3",[2,4,5]],[0,"덕수궁","랜드마크","서울 중앙","","서울 중구 65335","4913863560","4",[5]],[0,"동대문 (흥인지문)","랜드마크","서울 북쪽","","서울 종로구 26955","7124605304","4",[4,5]],[0,"동대문 디자인 플라자","랜드마크","서울 중앙","","서울 중구 11353","05897620143","4",[]],[0,"동대문 쇼핑몰","쇼핑","서울 중앙","","서울 영등포구 32839","4556203371","4",[]],[0,"동대문 역사 문화 공원","공원","서울 중앙","","서울 중구 44414","4287930998","4",[1,4]],[0,"디큐브시브","쇼핑","서울 서쪽","","서울 마포구 15729","08354619027","4",[]],[0,"러브뮤지엄","박물관","서울 서쪽","","서울 마포구 52182","02187495360","4.5",[2,4,5]],[0,"롯데백화점 본점","쇼핑","서울 중앙","","서울 중구 10475","06714890253","4",[]],[0,"롯데월드","놀이공원","서울 동쪽","","서울 송파구 84001","1605172044","4",[3]],[0,"롯데월드 아쿠아리움","동물원","서울 동쪽","","서울 송파구 89357","7925865652","4.5",[3,4]],[0,"롯데월드타워&몰","쇼핑","서울 동쪽","","서울 송파구 51195","314238184","4.5",[4]],[0,"마장 축산물시장","쇼핑","서울 중앙","","서울 성동구 72867","4296833899","4.5",[]],[0,"명동 성당","랜드마크","서울 중앙","","서울 중구 75117","1700096244","4.5",[5]],[0,"명동 쇼핑 거리","기타","서울 중앙","","서울 중구 38345","8528446069","4.5",[4,5]],[0,"명동난타극장","공연","서울 중앙","","서울 중구 16333","840026051","4.5",[3,5]],[0,"문화역서울 284","박물관","서울 중앙","","서울 중구 82381","983880764","4",[4]],[0,"박물관은살아있다 인사동점","박물관","서울 북쪽","","서울 종로구 09761","4745787858","4",[2,4]],[0,"별마당 도서관","여행자 자료","서울 남쪽","","서울 강남구 63975","9601084265","4.5",[2,4]],[0,"봉은사","랜드마크","서울 남쪽","","서울 강남구 65592","899042369","4.5",[4,5]],[0,"북악산 서울 성곽","랜드마크","서울 북쪽","","서울 종로구 05024","05893067241","4.5",[4]],[0,"북촌 한옥마을","기타","서울 북쪽","","서울 종로구 39792","8628675234","4",[]],[0,"북한산 국립공원","공원","서울 북쪽","","서울 성북구 52552","6337577549","4.5",[1]],[0,"삼성미술관 리움","박물관","서울 중앙","","서울 용산구 16868","2424244346","4.5",[3,4]],[0,"삼청각","랜드마크","서울 북쪽","","서울 성북구 62723","5706203961","4.5",[4]],[0,"삼청동길","랜드마크","서울 북쪽","","서울 종로구 29821","08690713542","4",[4]],[0,"서대문 형무소 역사관","박물관","서울 북쪽","","서울 성동구 91461","6556763101","4.3",[0]],[0,"서울 대학로","기타","서울 북쪽","","서울 종로구 55585","5443076283","4",[4,5]],[0,"서울 시청","랜드마크","서울 중앙","","서울 중구 68115","841038516","4",[]],[0,"서울 어린이 대공원","놀이공원","서울 동쪽","","서울 광진구 57596","314238184","4.5",[]],[0,"서울 역사 박물관","박물관","서울 북쪽","","서울 종로구 75461","8557642388","4.5",[2,5]],[0,"서울 월드컵 경기장 (상암 월드컵 경기장)","랜드마크","서울 서쪽","","서울시 동작구 42135","03025819674","4",[]],[0,"서울 한양 도성","랜드마크","서울 북쪽","","서울 종로구 24168","4394150277","4.5",[]],[0,"서울로7017","공원","서울 중앙","","서울 중구 16399","158600498","4",[]],[0,"서울숲","즐길거리","서울 중앙","","서울 성동구 10320","7449850506","4.5",[]],[0,"서울스카이","랜드마크","서울 동쪽","","서울 송파구 28652","314238184","4.5",[1,4,5]],[0,"서울중앙성원","랜드마크","서울 중앙","","서울 용산구 14155","8601505633","4.5",[0,2,4,5]],[0,"서초관광정보센터","여행자 자료","서울 남쪽","","서울 서초구 10215","5066193534","5",[]],[0,"석촌호수","공원","서울 동쪽","","서울 송파구 14042","4223795771","4.5",[1,4]],[0,"선릉과 정릉","랜드마크","서울 남쪽","","서울 강남구 98580","1791175378","4",[0,4,5]],[0,"세종대왕 동상","랜드마크","서울 북쪽","","서울 종로구 70566","3138220566","4",[0,4]],[0,"숭례문","랜드마크","서울 중앙","","서울 중구 72343","5977323502","4",[]],[0,"스타필드 코엑스몰","쇼핑","서울 남쪽","","서울 강남구 70562","4903129156","4",[]],[0,"신세계 백화점 본점","쇼핑","서울 중앙","","서울 중구 52522","6714221661","4",[4]],[0,"신촌","기타","서울 북쪽","","서울 서대문구 75779","1785810069","4",[4,5]],[0,"여의도 공원","공원","서울 중앙","","서울 영등포구 19471","2315597838","4.5",[1]],[0,"여의도 한강공원","공원","서울 중앙","","서울 영등포구 49225","633501986","4.5",[1]],[0,"예술의전당","박물관","서울 남쪽","","서울 서초구 51667","268335495","4.5",[3,4]],[0,"올림픽 공원","즐길거리","서울 동쪽","","서울 송파구 75589","8421450442","4.5",[]],[0,"운현궁","랜드마크","서울 북쪽","","서울 종로구 71628","5802849067","4",[4]],[0,"이대 패션거리","랜드마크","서울 북쪽","","서울 서대문구 40352","4826541987","4",[]],[0,"이태원","기타","서울 중앙","","서울 서대문구 81197","2912770588","4",[]],[0,"이화 벽화마을","기타","서울 북쪽","","서울 종로구 79816","1169526637","4",[4]],[0,"이화여자대학교","랜드마크","서울 북쪽","","서울 서대문구 84602","8672426137","4.5",[]],[0,"익선동한옥거리","기타","서울 북쪽","","서울 종로구 02576","4309027186","4.5",[4,5]],[0,"인사동","기타","서울 북쪽","","서울 종로구 57516","02598410736","4",[]],[0,"인왕산","공원","서울 북쪽","","서울 종로구 48711","9329620399","4.5",[1,4]],[0,"잠실 야구 경기장","즐길거리","서울 동쪽","","서울 송파구 57232","8389230362","4.5",[4]],[0,"정동극장","공연","서울 중앙","","서울 중구 75729","4145663721","4.5",[3,4]],[0,"조계사","랜드마크","서울 북쪽","","서울 종로구 28696","4032988512","4.5",[]],[0,"종묘","랜드마크","서울 북쪽","","서울 종로구 95056","08650234791","4",[4,5]],[0,"중부시장","쇼핑","서울 중앙","","서울 중구 13147","3966179301","4",[]],[0,"창경궁","랜드마크","서울 북쪽","","서울 종로구 64955","05390674812","4",[4]],[0,"창덕궁","공원","서울 북쪽","","서울 종로구 77711","421746928","4.5",[4]],[0,"청계천","공원","서울 북쪽","","서울 종로구 14141","802987311","4.5",[4]],[0,"청와대","랜드마크","서울 북쪽","","서울 종로구 64111","7770212465","4",[2,4]],[0,"충무공 이순신 동상","랜드마크","서울 북쪽","","서울 종로구 84617","4437938074","4",[0,4]],[0,"코엑스 센터","여행자 자료","서울 남쪽","","서울 강남구 70620","799284192","4",[]],[0,"코엑스 아쿠아리움","동물원","서울 남쪽","","서울 강남구 58140","5405118046","4",[3,4]],[0,"타임스퀘어","쇼핑","서울 중앙","","서울 영등포구 67751","2615794706","4",[]],[0,"트릭아이뮤지엄 서울","박물관","서울 서쪽","","서울 마포구 92565","3020575627","4.5",[2,4]],[0,"하늘공원","공원","서울 서쪽","","서울 마포구 45152","464800855","4.5",[1,4]],[0,"한강 공원","공원","서울 중앙","","서울 영등포구 43895","5685548818","4.5",[1,5]],[0,"한국 전쟁 기념관","박물관","서울 중앙","","서울 용산구 43079","6828469488","4.5",[2,5]],[0,"한국의 집","기타","서울 중앙","","서울 중구 77311","9087047535","4",[5]],[0,"홍대앞 거리","랜드마크","서울 서쪽","","서울 마포구 10062","3949260558","4.5",[4,5]],[0,"홍대앞 예술시장 프리마켓","쇼핑","서울 서쪽","","서울 마포구 93807","9794928601","4.5",[4,5]],[1,"가야 호텔","호텔","서울 중앙","비싼","서울 용산구 88320","6828469488","4",[4,6,7,10,11]],[1,"고구려 호스텔","호스텔","서울 중앙","적당","서울 서대문구 81197","5331312330","4.5",[7]],[1,"고속터미널 싱글 원룸","에어비엔비","서울 남쪽","저렴","서울 서초구 27183","08790623154","3.5",[4,7,9]],[1,"골드","게스트 하우스","서울 서쪽","비싼","서울 마포구 91116","2867766889","4",[5,7,9]],[1,"공덕 게스트 하우스","게스트 하우스","서울 서쪽","비싼","서울 강서구 92400","6828724514","4",[9,10]],[1,"공룡 에어비엔비","에어비엔비","서울 서쪽","적당","서울 송파구 51195","05410869732","4",[5,6,7]],[1,"그레이 호텔","호텔","서울 동쪽","비싼","서울 송파구 29021","737633943","4.5",[4,5,7,10]],[1,"그린하우스","게스트 하우스","서울 동쪽","적당","서울 송파구 69412","3270984665","4",[4,5]],[1,"그섬 호텔","호텔","서울 북쪽","저렴","서울 송파구 28652","6828470574","4.5",[10]],[1,"김의 옥탑방","에어비엔비","서울 북쪽","적당","서울 노원구 92290","2598753100","4.5",[4,7,9]],[1,"나이스 호스텔","호스텔","서울 북쪽","저렴","서울 노원구 48124","1148799788","3",[9]],[1,"나이팅게일 호스텔","호스텔","서울 동쪽","저렴","서울 강동구 29570","6434541192","3",[5,7]],[1,"낭낭 게스트 하우스","게스트 하우스","서울 중앙","적당","서울 종로구 77711","08714590623","4",[9]],[1,"더 그레이 호텔","호텔","서울 서쪽","적당","서울 서대문구 49644","9936949861","4",[4,5,7,10,11]],[1,"더 그린","에어비엔비","서울 동쪽","저렴","서울 송파구 89357","7925865652","4",[5,7]],[1,"더 프린세스","게스트 하우스","서울 서쪽","비싼","서울 마포구 62617","3452206823","4.5",[5,7,9]],[1,"더다크","호텔","서울 동쪽","비싼","서울 구로구 44497","05407923681","4",[4,5,6,8,9,10]],[1,"덕수 하우스","게스트 하우스","서울 동쪽","적당","서울 광진구 97807","6532299850","5",[7]],[1,"동문 호스텔","호스텔","서울 북쪽","저렴","서울 광희동 06359","3441990227","4",[5,7]],[1,"동키 게스트 하우스","게스트 하우스","서울 중앙","저렴","서울 용산구 55175","4398765156","3",[7,9]],[1,"마라톤 서울 호텔","호텔","서울 서쪽","저렴","서울 구로구 23834","8358700436","4.5",[5,7,10,11]],[1,"머니볼","모텔","서울 중앙","적당","서울 동대문구 13071","6829333778","3.8",[7,8]],[1,"메이 호텔 서울","호텔","서울 서쪽","비싼","서울 강서구 05643","8700257867","5",[4,5,7,9,10]],[1,"모텔 오월","모텔","서울 동쪽","저렴","서울 송파구 26600","541924183","4.3",[4,5,7,8]],[1,"모텔 킹","모텔","서울 북쪽","저렴","서울 성동구 58673","4770580838","3.8",[4,7,8]],[1,"밤나무집","에어비엔비","서울 중앙","저렴","서울 중구 35906 로 나오네요","08036412579","3",[5,6,10,11]],[1,"벚꽃 모텔","모텔","서울 동쪽","비싼","서울 송파구 89357","7925865652","4.5",[4,5,7,8]],[1,"북촌 호텔","호텔","서울 중앙","적당","서울 종로구 55215","7610986019","4",[4,7]],[1,"삼미여관","에어비엔비","서울 북쪽","저렴","서울 강북구 11373","7207506393","4.7",[4,7,9]],[1,"상엽호텔","호텔","서울 북쪽","적당","서울 서초구 09236","1127823703","4",[4,5,7,9]],[1,"서운정","에어비엔비","서울 중앙","비싼","서울 종로구 08897","5847248379","4",[5,7]],[1,"서울풍경","게스트 하우스","서울 남쪽","적당","서울 종로구 91012","7767705334","4.5",[5,7]],[1,"서촌 한옥 게스트하우스","게스트 하우스","서울 중앙","저렴","서울 종로구 58449","3147899405","4.7",[7,9]],[1,"송이네집","게스트 하우스","서울 중앙","비싼","서울시 중구 44551","01037846592","4",[4,5,10]],[1,"송이모텔","모텔","서울 동쪽","저렴","서울 광진구 60263","7985403523","4",[4,5,7,8]],[1,"쉼 인 서울","에어비엔비","서울 서쪽","비싼","서울 마포구 53225","1556696558","4.7",[4,7]],[1,"스노우하우스","호텔","서울 중앙","적당","서울 중구 16333","6829184614","4",[8,9]],[1,"스프링","호텔","서울 서쪽","저렴","서울시 종로구 31930","03076849521","4.5",[5]],[1,"시그니처 서울","에어비엔비","서울 동쪽","비싼","서울 송파구 89332","2290443293","4",[4,5,7,9]],[1,"심미 호스텔","호스텔","서울 서쪽","저렴","서울 마포구 92170","2831176224","3",[5,7,9]],[1,"아카펠라","모텔","서울 서쪽","적당","서울 마포구 05715","4034420341","4.7",[4,7,8,9]],[1,"안즈 서울","에어비엔비","서울 남쪽","비싼","서울 강남구 56815","5682216195","4.5",[4,5,7,9]],[1,"야드 서울","모텔","서울 중앙","비싼","서울 종로구 22023","1700096244","3",[4,7,8]],[1,"에버뉴 호텔","호텔","서울 동쪽","적당","서울 광진구 98410","6892125459","4",[4,5,6,7,10,11]],[1,"오미야게 호텔","호텔","서울 북쪽","적당","서울 종로구 11810","7445564178","4",[5,7,9,10]],[1,"전주 에어비엔비","에어비엔비","서울 동쪽","저렴","서울 송파구 57232","01604327985","4.5",[]],[1,"정모텔","모텔","서울 남쪽","저렴","서울 서초구 66894","7269223521","3",[4,5,8]],[1,"제이 호텔","호텔","서울 북쪽","적당","서울 성동구 91461","907059748","4",[4,5,7,10,11]],[1,"진 하우스","에어비엔비","서울 서쪽","저렴","서울 마포구 10506","3645013891","4",[5,7]],[1,"체리","에어비엔비","서울 북쪽","비싼","서울 종로구 84132","03125086479","4.5",[4,6,10,11]],[1,"초롱이네 게스트 하우스","게스트 하우스","서울 동쪽","적당","서울 종로구 31930","00189643527","4",[4,5,7,9]],[1,"친구 모텔","모텔","서울 서쪽","저렴","서울 종로구 07645로 나옵니다","02658137409","4.5",[4,5,7,9,11]],[1,"컬렉션","게스트 하우스","서울 서쪽","비싼","서울 마포구 16053","5996336996","4",[5,9]],[1,"투데이","게스트 하우스","서울 남쪽","비싼","서울 강남구 11314","645850731","5",[5,7]],[1,"파크 올리브 서울","에어비엔비","서울 남쪽","비싼","서울 강남구 26068","9088463396","4.5",[4,5,7,9]],[1,"파크 호텔","호텔","서울 동쪽","비싼","서울 송파구 21999","3916896035","4.8",[4,5,7,9,10,11]],[1,"패밀리 호텔","호텔","서울 남쪽","적당","서울 강남구 16769","3121587755","4",[4,5,6,7,10,11]],[1,"포레스트 호텔","호텔","서울 남쪽","적당","서울 강남구 62987","899042369","4",[4,5,6,7,10,11]],[1,"프리미어 호텔","호텔","서울 중앙","비싼","서울 종로구 77293","840026051","4.5",[4,5,7,10]],[1,"프린스 호텔 서울","호텔","서울 중앙","비싼","서울 중구 60927","626919822","4.9",[4,7,8,9]],[1,"행복 호텔","호텔","서울 동쪽","적당","서울 광진구 91815","314238184","4.5",[4,6,7]],[1,"행운 호텔","호텔","서울 서쪽","비싼","서울 마포구 93807","6829388443","5",[4,6,8,9]],[1,"헬로우 월드","에어비엔비","서울 동쪽","저렴","서울 강동구 15641","3490995084","4",[5,7]],[1,"호두나무집","게스트 하우스","서울 북쪽","저렴","서울 강남구 65592","03512974860","4",[5]],[1,"호스텔 스위스","호스텔","서울 남쪽","적당","서울 강남구 01509","392090491","3",[5,7,9]],[1,"호스텔 제이제이","호스텔","서울 중앙","비싼","서울 중구 05733","2615794706","4",[5,7]],[1,"호텔 파크","호텔","서울 남쪽","비싼","서울 서초구 56058","4260921789","4",[4,6,7,10,11]],[1,"화이트모텔","모텔","서울 북쪽","적당","서울 종로구 77711","5794546181","4",[5,7,9]],[1,"회기 하우스","에어비엔비","서울 북쪽","저렴","서울 성북구 61983","9217616240","4.5",[5,7]],[1,"힐 모텔 서울","모텔","서울 북쪽","저렴","서울 동대문구 10287","5675469388","3.5",[4,5,7,8]],[1,"힐링 호텔","호텔","서울 북쪽","저렴","서울 성북구 24408","5536266211","4",[4,5,7,9]],[2,"가장맛난간장게장","한식당","서울 중앙","비싼","서울 용산구 27394","5870538303","3.8",[5,13]],[2,"가지가지차이나","중식당","서울 서쪽","적당","서울 구로구 94375","5794546181","4.5",[4,5]],[2,"까스까스까스","일식당","서울 동쪽","적당","서울 강동구 18640","3045371685","4.5",[4,5]],[2,"꼬끼오꼬꼬","한식당","서울 중앙","저렴","서울 종로구 69924","9087047535","4.5",[4,5,13]],[2,"꿔=바로우","중식당","서울 남쪽","적당","서울 서초구 43372","799284192","3.5",[4,13]],[2,"내가만약석박이라면","분식집","서울 북쪽","적당","서울 종로구 68124","802987311","4",[]],[2,"내맘속의나폴리","양식당","서울 중앙","적당","서울 종로구 07645","3328398910","4.5",[4,5,7,12]],[2,"누가또가재","양식당","서울 동쪽","비싼","서울 송파구 38907","2352354382","4",[4,5,7]],[2,"닭발먹고오리발내민다","한식당","서울 북쪽","저렴","서울 광희동 22357","1283103121","4.5",[5,8,13]],[2,"돼지조아소조아","한식당","서울 중앙","저렴","서울 종로구 68336","5835547171","4.5",[4,5,13]],[2,"두부두부두부","한식당","서울 동쪽","저렴","서울 송파구 96349","5558754116","4.5",[5,13]],[2,"두유노코리안","한식당","서울 남쪽","적당","서울 강남구 05699","9125377660","4.5",[5,12,13]],[2,"루이필라프2세","양식당","서울 서쪽","적당","서울 마포구 43376","2418424673","4.5",[4,5,7,13]],[2,"만칠천무한리필","한식당","서울 중앙","저렴","서울 용산구 11956","357001123","5",[4,7,8,13]],[2,"믿고맡기는초밥","일식당","서울 중앙","비싼","서울 서대문구 23906","7793266881","4.5",[13]],[2,"밀수업자","베이커리","서울 북쪽","저렴","서울 성동구 37066","273769489","4",[5]],[2,"부찌부찌","한식당","서울 동쪽","적당","서울 송파구 69412","686482523","4",[5,13]],[2,"분식, 회개","분식집","서울 중앙","적당","서울 용산구 1195","00847329561","4",[4,13]],[2,"분식회개","분식집","서울 동쪽","저렴","서울 광진구 11728","3906199933","4.5",[5,7]],[2,"빈대떡집","일식당","서울 북쪽","적당","서울 강북구 61033","3098248868","4.3",[5,13]],[2,"뽀식이네 감자탕","한식당","서울 중앙","비싼","서울 종로구 16727","2912770588","4",[4,5,13]],[2,"사시사철미식가","일식당","서울 서쪽","비싼","서울 마포구 32302","9993326426","4",[4,12,13]],[2,"사차원주머니","베이커리","서울 남쪽","적당","서울 서초구 67858","7248095872","4",[5,7]],[2,"술판오브디스코","주점","서울 서쪽","적당","서울 마포구 43406","3563320687","4.3",[5,7,8,12,13]],[2,"슈크림이돌아왔다","베이커리","서울 동쪽","적당","서울 강동구 48748","5674469157","4.5",[5]],[2,"스윗소보루","베이커리","서울 서쪽","저렴","서울 강서구 92400","4022616603","4.5",[5,7]],[2,"식객","한식당","서울 남쪽","비싼","서울 강남구 19878","4903129156","4.3",[4,5,7,8,12,13]],[2,"식스타임즈","한식당","서울 서쪽","적당","서울 구로구 44497","3270984665","4",[4,12,13]],[2,"어차피자","양식당","서울 북쪽","적당","서울 광희동 44928","1785810069","4",[7,12,13]],[2,"엄중식","중식당","서울 북쪽","비싼","서울 강북구 86033","1169526637","4.3",[4,5,7,8,13]],[2,"오동통규동동","일식당","서울 중앙","저렴","서울 서대문구 12259","4745787858","4.3",[]],[2,"외계인의맛집","한식당","서울 중앙","비싼","서울 중구 37569","8704420541","4",[4,5,7,8,12,13]],[2,"이기자카야","주점","서울 남쪽","적당","서울 서초구 46141","1974956805","4.3",[4,5,8,12,13]],[2,"이럴순없는대","한식당","서울 중앙","저렴","서울 중구 50461","8410249059","4",[4,13]],[2,"이에스시","일식당","서울 남쪽","비싼","서울 강남구 35786","7485027801","4",[4]],[2,"주점부리","주점","서울 동쪽","저렴","서울 광진구 18327","110491439","4.5",[4,5,7,8,13]],[2,"치키웨이","치킨집","서울 북쪽","적당","서울 성동구 12258","9536237561","4.3",[4,5,7,13]],[2,"치킨키친","치킨집","서울 남쪽","저렴","서울 서초구 09236","6916365570","4.3",[8,12,13]],[2,"친구를 만나느라 샵샵샵","일식당","서울 중앙","적당","서울 중구 57988","437220560","4.5",[4,5,7,8,12,13]],[2,"팁 앤 스테이크","양식당","서울 남쪽","비싼","서울 강남구 28502","5045142887","4.5",[4,5,7,12,13]],[2,"피렌체의밤","양식당","서울 서쪽","비싼","서울 강서구 44400","8474489574","4.5",[4,5,12,13]],[2,"피에르오뎅","분식집","서울 서쪽","적당","서울 마포구 15729","2363026031","4.5",[5,7]],[2,"한가한과","베이커리","서울 중앙","적당","서울 종로구 31930","8035504077","4.3",[5,7]],[2,"한국인의김치상","한식당","서울 중앙","적당","서울 종로구 08303","7734959285","5",[4,5,13]],[2,"한시간삼십분식","분식집","서울 북쪽","저렴","서울 종로구 57896","4309027186","4",[12]],[2,"홀럭키하우스","중식당","서울 동쪽","비싼","서울 송파구 20740","1127823703","3.5",[5,13]],[2,"회오리라멘","일식당","서울 중앙","적당","서울 중구 35906","9063570596","4",[4,5,13]]];
+const FALLBACK_PLACES = RAW_PLACES.map(function(r){
+  return { domain:DOM_NAMES[r[0]], name:r[1], type:r[2], area:r[3], price:r[4],
+           address:r[5], phone:r[6], rating:r[7],
+           attrs:r[8].map(function(i){ return ATTR_NAMES[i]; }) };
+});
 
-const TYPES  = ["랜드마크","박물관","공원","동물원","쇼핑","공연","기타","상관없음"];
-const AREAS  = ["서울 중앙","서울 북쪽","서울 남쪽","서울 동쪽","서울 서쪽","상관없음"];
-const CLASSES= ["고급","에코","개인","상관없음"];
-const LINKS  = [["from","장소에서 출발해요"],["to","장소로 갈게요"],["none","장소와 상관없어요"]];
+// 도메인마다 종류 목록이 다릅니다. 데이터에 실제로 있는 값만 씁니다.
+const TYPES_BY_DOMAIN = {};
+FALLBACK_PLACES.forEach(function(p){
+  (TYPES_BY_DOMAIN[p.domain] = TYPES_BY_DOMAIN[p.domain] || []).indexOf(p.type) < 0 &&
+    TYPES_BY_DOMAIN[p.domain].push(p.type);
+});
+Object.keys(TYPES_BY_DOMAIN).forEach(function(d){ TYPES_BY_DOMAIN[d].sort(); });
+
+const AREAS   = ["서울 중앙","서울 북쪽","서울 남쪽","서울 동쪽","서울 서쪽","상관없음"];
+const PRICES  = ["저렴","적당","비싼","상관없음"];
+const CLASSES = ["고급","에코","개인","상관없음"];
+const LINKS   = [["from","장소에서 출발해요"],["to","장소로 갈게요"],["none","장소와 상관없어요"]];
 const ANY = "상관없음";
 
 // settings.py 의 칸 이름을 웹 내부 이름에 맞춥니다.
-// make_config.py 가 slots.json 으로 내보낸 것을 config.js 가 실어 옵니다.
 const SLOT_KEY = {
-  "장소 종류":"place_type", "장소 지역":"place_area", "장소 이름":"place_name",
+  "장소 갈래":"place_domain", "장소 종류":"place_type", "장소 지역":"place_area",
+  "장소 가격대":"place_price", "장소 이름":"place_name",
   "택시 출발지":"taxi_from", "택시 도착지":"taxi_to",
   "출발 시간":"taxi_depart_at", "택시 종류":"taxi_class"
 };
-const ALL_ASK = ["place_type","place_area","place_name",
+const ALL_ASK = ["place_domain","place_type","place_area","place_price","place_name",
                  "taxi_from","taxi_to","taxi_depart_at","taxi_class"];
 const WRAP = {
-  place_type:"wrap-type", place_area:"wrap-area", place_name:"wrap-name",
+  place_domain:"wrap-domain", place_type:"wrap-type", place_area:"wrap-area",
+  place_price:"wrap-price", place_name:"wrap-name",
   taxi_from:"wrap-from", taxi_to:"wrap-to",
   taxi_depart_at:"wrap-time", taxi_class:"wrap-class"
 };
 
 const SLOTS = CFG.SLOTS || null;
-const UNKNOWN = [];
-let ASK = ALL_ASK;
-if (SLOTS && SLOTS.ask && SLOTS.ask.length){
-  const mapped = [];
-  SLOTS.ask.forEach(function(pair){
-    const k = SLOT_KEY[pair[0]];
-    if (k) mapped.push(k); else UNKNOWN.push(pair[0]);
-  });
-  if (mapped.length) ASK = mapped;
-}
-// 장소 이름을 택시 한쪽에 자동으로 넣는 기능은 세 칸이 다 살아 있을 때만 뜻이 있습니다.
-const CAN_LINK = ASK.indexOf("place_name") >= 0 &&
-                 ASK.indexOf("taxi_from") >= 0 && ASK.indexOf("taxi_to") >= 0;
+const DOMAINS = (SLOTS && SLOTS.domains) ? Object.keys(SLOTS.domains) : ["관광","숙소","식당"];
+const FILTERS = (SLOTS && SLOTS.filters) || {};
 
-// 손님에게 보이는 이름과, 실습 화면에서 쓰는 슬롯 이름을 따로 둡니다.
+// 지금 고른 도메인에서 묻는 칸만 돌려줍니다. 도메인을 바꾸면 칸도 바뀝니다.
+function askFor(dom){
+  if (SLOTS && SLOTS.domains && SLOTS.domains[dom]){
+    const out = [];
+    SLOTS.domains[dom].forEach(function(n){
+      const k = SLOT_KEY[n];
+      if (k) out.push(k);
+    });
+    return out;
+  }
+  return ALL_ASK.filter(function(k){ return dom === "관광" ? k !== "place_price" : true; });
+}
+
 const UI = {
-  place_type:"종류", place_area:"지역", place_name:"장소",
+  place_domain:"갈래", place_type:"종류", place_area:"지역", place_price:"가격대", place_name:"장소",
   place_address:"주소", place_phone:"연락처", place_rating:"평점",
   taxi_from:"타는 곳", taxi_to:"내리는 곳", taxi_depart_at:"출발", taxi_class:"택시"
 };
 const SLOT = {
-  place_type:"종류", place_area:"지역", place_name:"이름",
+  place_domain:"갈래", place_type:"종류", place_area:"지역", place_price:"가격대", place_name:"이름",
   place_address:"주소", place_phone:"연락처", place_rating:"평점",
   taxi_from:"출발지", taxi_to:"도착지", taxi_depart_at:"출발 시간",
   taxi_class:"종류", taxi_link:"장소 연결", driver_phone:"기사 연락처"
 };
 const ASK_PROMPT = {
-  place_type:"무엇을 하고 싶은지 골라주세요",
+  place_domain:"관광지, 숙소, 식당 중에 무엇을 찾으실지 골라주세요",
+  place_type:"종류를 골라주세요",
   place_area:"어느 지역으로 갈지 골라주세요",
+  place_price:"가격대를 골라주세요",
   place_name:"장소를 골라주세요",
   taxi_from:"어디서 타실지 알려주세요",
   taxi_to:"어디서 내리실지 알려주세요",
@@ -508,10 +520,17 @@ let logItems = [];
 let prevAuto = {};
 
 const state = {
-  place_type:"", place_area:"", place_name:"",
+  place_domain:"", place_type:"", place_area:"", place_price:"", place_name:"",
+  place_filters:[],                 // 조건. 묻는 칸이 아니라 후보를 좁히는 장치입니다
   taxi_link:"from", taxi_from:"", taxi_to:"",
   taxi_depart_at:"", taxi_class:""
 };
+// 지금 도메인에서 묻는 칸. 도메인을 바꿀 때마다 다시 계산합니다.
+let ASK = askFor("관광");
+function canLink(){
+  return ASK.indexOf("place_name") >= 0 &&
+         ASK.indexOf("taxi_from") >= 0 && ASK.indexOf("taxi_to") >= 0;
+}
 
 const $ = function(id){ return document.getElementById(id); };
 const esc = function(s){
@@ -536,7 +555,9 @@ function derive(){
 function values(){
   const a = derive();
   return {
-    place_type: state.place_type, place_area: state.place_area, place_name: state.place_name,
+    place_domain: state.place_domain, place_type: state.place_type,
+    place_area: state.place_area, place_price: state.place_price,
+    place_name: state.place_name,
     place_address: a.place_address, place_phone: a.place_phone, place_rating: a.place_rating,
     taxi_from: a.taxi_from, taxi_to: a.taxi_to,
     taxi_depart_at: state.taxi_depart_at, taxi_class: state.taxi_class
@@ -564,8 +585,14 @@ function fillSelect(el, items, placeholder){
 
 function matching(){
   return places.filter(function(p){
+    if (state.place_domain && p.domain !== state.place_domain) return false;
     if (state.place_type && state.place_type !== ANY && p.type !== state.place_type) return false;
     if (state.place_area && state.place_area !== ANY && p.area !== state.place_area) return false;
+    if (state.place_price && state.place_price !== ANY && p.price !== state.place_price) return false;
+    // 조건은 모두 만족해야 남습니다. 조건을 끄면 후보가 다시 넓어집니다.
+    for (let i = 0; i < state.place_filters.length; i++){
+      if ((p.attrs || []).indexOf(state.place_filters[i]) < 0) return false;
+    }
     return true;
   });
 }
@@ -607,6 +634,55 @@ function buildChips(){
     buildChips(); render();
   });
 }
+
+function buildDomainChips(){
+  chipGroup("f-domain", DOMAINS.map(function(d){
+    return [d, d === "관광" ? "관광지" : d];
+  }), state.place_domain, function(d){
+    if (state.place_domain === d) return;
+    // 갈래를 바꾸면 그 아래 장소 관련 칸은 전부 새로 받아야 합니다.
+    state.place_domain = d;
+    state.place_type = ""; state.place_area = ""; state.place_price = "";
+    state.place_name = ""; state.place_filters = [];
+    ASK = askFor(d);
+    setupDomain();
+  });
+}
+
+function buildFilterChips(){
+  const list = FILTERS[state.place_domain] || [];
+  $("wrap-filter").hidden = !list.length;
+  if (!list.length) return;
+  const box = $("f-filter");
+  box.innerHTML = "";
+  list.forEach(function(f){
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip";
+    b.textContent = f.replace(/\s*유무$/, "").replace(/\s*가능$/, "");
+    b.setAttribute("aria-pressed", state.place_filters.indexOf(f) >= 0 ? "true" : "false");
+    b.addEventListener("click", function(){
+      const i = state.place_filters.indexOf(f);
+      if (i >= 0) state.place_filters.splice(i, 1); else state.place_filters.push(f);
+      buildFilterChips(); refreshNames(); render();
+    });
+    box.appendChild(b);
+  });
+}
+
+// 갈래가 바뀌면 종류 목록, 가격대 유무, 조건 칩, 감출 칸이 모두 다시 정해집니다.
+function setupDomain(){
+  const d = state.place_domain;
+  fillSelect($("f-type"), (TYPES_BY_DOMAIN[d] || []).concat([ANY]), "골라주세요");
+  fillSelect($("f-price"), PRICES, "골라주세요");
+  ALL_ASK.forEach(function(k){
+    const w = $(WRAP[k]);
+    if (w) w.hidden = ASK.indexOf(k) < 0;
+  });
+  if (!d){ ["wrap-type","wrap-area","wrap-price","wrap-name","wrap-filter"].forEach(function(w){ $(w).hidden = true; }); }
+  $("wrap-link").hidden = !canLink() || !d;
+  if (!canLink()) state.taxi_link = "none";
+  buildDomainChips(); buildFilterChips(); buildLinkChips(); refreshNames(); render();
+}
 function buildLinkChips(){
   chipGroup("f-link", LINKS, state.taxi_link, function(key){
     if (state.taxi_link === key) return;
@@ -632,6 +708,7 @@ function render(){
 
   $("f-type").value = state.place_type;
   $("f-area").value = state.place_area;
+  $("f-price").value = state.place_price;
   $("f-time").value = state.taxi_depart_at;
 
   // 고른 장소를 카드로 보여 줍니다. 읽기 전용 입력칸보다 읽기 쉽습니다.
@@ -642,6 +719,11 @@ function render(){
     $("pc-addr").textContent = v.place_address || "";
     $("pc-more").innerHTML = (v.place_phone ? esc(v.place_phone) : "") +
       (v.place_rating ? ' · 평점 <b>' + esc(v.place_rating) + "</b>" : "");
+    const p = places.find(function(x){ return x.name === v.place_name; });
+    const at = p && p.attrs ? p.attrs : [];
+    $("pc-attrs").textContent = at.length
+      ? at.map(function(a){ return a.replace(/\s*유무$/, "").replace(/\s*가능$/, ""); }).join(" · ")
+      : "";
   }
 
   ["from","to"].forEach(function(side){
@@ -665,14 +747,18 @@ function render(){
     return '<i class="' + (v[k] ? "on" : "") + '"></i>';
   }).join("");
 
+  const priceOn = ASK.indexOf("place_price") >= 0;
   if (LAB){
     $("board-place").innerHTML =
-        slotRow("place_type", v.place_type, false) + slotRow("place_area", v.place_area, false)
+        slotRow("place_domain", v.place_domain, false)
+      + slotRow("place_type", v.place_type, false) + slotRow("place_area", v.place_area, false)
+      + (priceOn ? slotRow("place_price", v.place_price, false) : "")
       + slotRow("place_name", v.place_name, false) + slotRow("place_address", v.place_address, true)
       + slotRow("place_phone", v.place_phone, true) + slotRow("place_rating", v.place_rating, true);
   } else {
     $("board-place").innerHTML =
-        slotRow("place_name", v.place_name, false) + slotRow("place_address", v.place_address, true)
+        slotRow("place_domain", v.place_domain, false)
+      + slotRow("place_name", v.place_name, false) + slotRow("place_address", v.place_address, true)
       + slotRow("place_rating", v.place_rating, true);
   }
   $("board-taxi").innerHTML =
@@ -702,7 +788,9 @@ function render(){
 function payload(){
   const v = values();
   return {
-    place_type:v.place_type, place_area:v.place_area, place_name:v.place_name,
+    place_domain:v.place_domain, place_type:v.place_type, place_area:v.place_area,
+    place_price:v.place_price || null, place_filters:state.place_filters.slice(),
+    place_name:v.place_name,
     place_address:v.place_address, place_phone:v.place_phone,
     place_rating:v.place_rating === "" ? null : v.place_rating,
     taxi_link:state.taxi_link, taxi_from:v.taxi_from, taxi_to:v.taxi_to,
@@ -805,8 +893,10 @@ async function save(){
 }
 
 function reset(keepStatus){
-  ASK.forEach(function(k){ state[k] = ""; });
+  ALL_ASK.forEach(function(k){ state[k] = ""; });
+  state.place_filters = [];
   state.taxi_link = "from";
+  ASK = askFor("");
   editingId = null;
   $("name-note").textContent = "";
   $("form-err").hidden = true;
@@ -818,9 +908,13 @@ function edit(id){
   const r = records.find(function(x){ return x.id === id; });
   if (!r) return;
   editingId = id;
+  state.place_domain = r.place_domain || "";
   state.place_type = r.place_type || "";
   state.place_area = r.place_area || "";
+  state.place_price = r.place_price || "";
+  state.place_filters = r.place_filters || [];
   state.place_name = r.place_name || "";
+  ASK = askFor(state.place_domain);
   state.taxi_link = r.taxi_link || "none";
   state.taxi_from = r.taxi_from || "";
   state.taxi_to = r.taxi_to || "";
@@ -878,14 +972,7 @@ async function connect(url, key){
 }
 
 // ---------- 시작 ----------
-// settings.py 에 없는 칸은 폼에서 통째로 감춥니다. 줄을 지우면 여기서 사라집니다.
-ALL_ASK.forEach(function(k){
-  if (ASK.indexOf(k) < 0) $(WRAP[k]).hidden = true;
-});
-if (!CAN_LINK){
-  $("wrap-link").hidden = true;
-  state.taxi_link = "none";
-}
+// 칸을 감추고 보이는 일은 setupDomain() 이 갈래에 맞춰 대신 합니다.
 
 // ---------- 챗봇 탭 ----------
 // 페이지 안에서 도는 봇입니다. 터미널의 Gradio 봇과 같은 칸, 같은 기억 제약을 씁니다.
@@ -923,7 +1010,7 @@ function grabSide(t, markers){
     const re = new RegExp("([가-힣A-Za-z0-9&()\\s]{2,24}?)\\s*" + markers[i]);
     const m = t.match(re);
     if (m){
-      let v = m[1].trim().replace(/^(그럼|이제|그리고|근데|아|저|네)\s*/, "");
+      let v = m[1].trim().replace(/^(그냥|그럼|이제|그리고|근데|아|저|네|일단|음)\s+/, "").trim();
       const known = findPlace(v);
       return known || v;
     }
@@ -952,11 +1039,15 @@ function pick(text){
   const got = {};
   segs.forEach(function(s){
     const one = pickOne(s);
-    Object.keys(one).forEach(function(k){ got[k] = one[k]; });
+    Object.keys(one).forEach(function(k){
+      if (k === "filters_on" || k === "filters_off"){
+        got[k] = (got[k] || []).concat(one[k]);
+      } else got[k] = one[k];
+    });
   });
   const t = text.trim();
   // "아무거나 / 상관없어요" 는 문장 전체를 보고 판단합니다.
-  if (/상관\s*없|아무거나|아무 데나|아무데나|신경\s*(?:쓰지|안)|알아서/.test(t)){
+  if (/상관\s*없|아무\s*\S{0,3}\s*나|아무거나|아무\s*데나|신경\s*(?:쓰지|안)|알아서|아무래도/.test(t)){
     if (/택시|종류/.test(t) && !/장소|관광/.test(t)) got.taxi_class = ANY;
     else if (/지역|어디\s*쪽/.test(t)) got.place_area = ANY;
     else if (lastAsked === "taxi_class" || lastAsked === "place_area" || lastAsked === "place_type") got[lastAsked] = ANY;
@@ -969,10 +1060,55 @@ function pickOne(text){
   const got = {};
 
   const nm = findPlace(t);
-  if (nm) got.place_name = nm;
+  if (nm){
+    got.place_name = nm;
+    const p = places.find(function(x){ return x.name === nm; });
+    if (p){ got.place_domain = p.domain; got.place_type = p.type; }
+  }
 
-  const ty = t.match(/(랜드마크|박물관|공원|동물원|쇼핑|공연|기타)/);
-  if (ty) got.place_type = ty[1];
+  // 갈래. "숙소" "호텔" 같은 말이나 종류 이름에서 되짚습니다.
+  if (/숙소|묵을|잘 곳|호텔|모텔|게스트|호스텔|에어비앤비|에어비엔비/.test(t)) got.place_domain = "숙소";
+  else if (/식당|밥집|맛집|먹을|치킨|일식|중식|한식|양식|분식|주점|베이커리/.test(t)) got.place_domain = "식당";
+  else if (/관광|구경|볼거리|여행지|관광지/.test(t)) got.place_domain = "관광";
+
+  // 종류. 데이터에 실제로 있는 이름만 인정합니다.
+  const allTypes = [];
+  Object.keys(TYPES_BY_DOMAIN).forEach(function(d){
+    TYPES_BY_DOMAIN[d].forEach(function(x){ if (allTypes.indexOf(x) < 0) allTypes.push(x); });
+  });
+  allTypes.sort(function(a,b){ return b.length - a.length; });
+  for (let i = 0; i < allTypes.length; i++){
+    const bare = allTypes[i].replace(/(당|집|관|장)$/, "");
+    if (t.indexOf(allTypes[i]) >= 0 || (bare.length >= 2 && t.indexOf(bare) >= 0)){
+      got.place_type = allTypes[i];
+      if (!got.place_domain){
+        Object.keys(TYPES_BY_DOMAIN).forEach(function(d){
+          if (TYPES_BY_DOMAIN[d].indexOf(allTypes[i]) >= 0) got.place_domain = d;
+        });
+      }
+      break;
+    }
+  }
+
+  const pr = t.match(/(저렴|싼|적당|보통|비싼|고급스러운)/);
+  if (pr) got.place_price = {"싼":"저렴","보통":"적당","고급스러운":"비싼"}[pr[1]] || pr[1];
+
+  // 조건. "헬스장 있는" 은 켜고, "헬스장 없어도" 는 끕니다.
+  const FMAP = {"헬스장":"헬스장 유무","조식":"조식 가능","아침":"조식 가능","수영장":"수영장 유무",
+    "스파":"스파 유무","인터넷":"인터넷 가능","와이파이":"인터넷 가능","주차":"주차 가능",
+    "흡연":"흡연 가능","도보":"도보 가능","야외석":"야외석 유무","테라스":"야외석 유무",
+    "술":"주류 판매","주류":"주류 판매","역사":"역사적","경치":"경치 좋은",
+    "교육":"교육적","문화":"문화 예술"};
+  Object.keys(FMAP).forEach(function(word){
+    const i = t.indexOf(word);
+    if (i < 0) return;
+    const after = t.slice(i, i + word.length + 12);
+    if (/없어도|없어도\s*돼|안\s*해도|필요\s*없|상관\s*없|빼/.test(after)) {
+      (got.filters_off = got.filters_off || []).push(FMAP[word]);
+    } else if (/있는|있어야|되는|되고|가능|딸린|포함/.test(after)) {
+      (got.filters_on = got.filters_on || []).push(FMAP[word]);
+    }
+  });
 
   const ar = t.match(/서울\s*(중앙|북쪽|남쪽|동쪽|서쪽)|(중앙|북쪽|남쪽|동쪽|서쪽)\s*(?:지역|쪽|편)/);
   if (ar) got.place_area = "서울 " + (ar[1] || ar[2]);
@@ -1003,10 +1139,18 @@ function pickOne(text){
 function chatSlots(){
   // app.py 와 같은 규칙입니다. 뒤에서 HIST 개의 주고받기만 봅니다.
   const recent = HIST > 0 ? turns.slice(-HIST) : [];
-  const box = {}, ever = {};
+  const box = {}, ever = {}, filters = [];
   turns.forEach(function(x){ Object.assign(ever, x.got); });
-  recent.forEach(function(x){ Object.assign(box, x.got); });
-  return { box: box, ever: ever };
+  recent.forEach(function(x){
+    Object.keys(x.got).forEach(function(k){
+      if (k !== "filters_on" && k !== "filters_off") box[k] = x.got[k];
+    });
+    (x.got.filters_on || []).forEach(function(f){ if (filters.indexOf(f) < 0) filters.push(f); });
+    (x.got.filters_off || []).forEach(function(f){
+      const i = filters.indexOf(f); if (i >= 0) filters.splice(i, 1);
+    });
+  });
+  return { box: box, ever: ever, filters: filters };
 }
 
 function bubble(cls, htmlStr){
@@ -1033,7 +1177,22 @@ async function chatSend(){
   $("chat-input").value = "";
   bubble("me", esc(text));
 
+  // "처음부터 다시" 는 지금까지 받은 것을 버립니다. 그 말 안의 새 조건은 살립니다.
+  if (/처음부터|다시\s*시작|리셋|초기화|취소하고/.test(text)){
+    turns = []; lastAsked = "";
+    ALL_ASK.forEach(function(k){ state[k] = ""; });
+    state.place_filters = [];
+  }
+
+  const prevName = chatSlots().box.place_name || "";
   let got = pick(text);
+  // 방금 되물은 칸에 "네" 라고만 답하면 그 칸을 장소 이름으로 채웁니다.
+  if ((lastAsked === "taxi_to" || lastAsked === "taxi_from") &&
+      /^(네|예|응|어|그래|맞아|바꿔|바꿔줘|그렇게)/.test(text.trim()) &&
+      !got[lastAsked]){
+    const cur = chatSlots().box.place_name;
+    if (cur) got[lastAsked] = cur;
+  }
   // "반대예요" 는 출발지와 도착지를 맞바꿉니다. 시나리오 3-B 가 이것입니다.
   if (/반대|바꿔\s*서|거꾸로/.test(text)){
     const s = chatSlots().box;
@@ -1047,13 +1206,38 @@ async function chatSend(){
   const st = chatSlots();
   const box = st.box, ever = st.ever;
 
+  // 갈래가 정해지면 그 갈래의 칸만 묻습니다. 폼과 같은 규칙입니다.
+  if (box.place_domain) ASK = askFor(box.place_domain);
+
   // 봇이 받아낸 칸을 폼 상태에 그대로 옮깁니다.
   // 오른쪽 요약이 같이 차오르고, 폼 탭으로 넘어가면 이어서 고칠 수 있습니다.
   state.taxi_link = "none";
-  ASK.forEach(function(k){ state[k] = box[k] || ""; });
-  refreshNames(); buildChips(); buildLinkChips(); render();
+  ALL_ASK.forEach(function(k){ state[k] = box[k] || ""; });
+  state.place_filters = st.filters.slice();
+  if (state.place_domain){
+    fillSelect($("f-type"), (TYPES_BY_DOMAIN[state.place_domain] || []).concat([ANY]), "골라주세요");
+    ALL_ASK.forEach(function(k){ const w = $(WRAP[k]); if (w) w.hidden = ASK.indexOf(k) < 0; });
+  }
+  buildDomainChips(); buildFilterChips(); buildChips(); buildLinkChips();
+  refreshNames(); render();
   const missing = ASK.filter(function(k){ return !box[k]; });
   const head = LAB ? labHeader(box, ever) : "";
+
+  // 장소를 바꿨는데 택시 칸에 옛 이름이 남아 있으면 그냥 두지 않고 물어봅니다.
+  // 따라가야 하는지 아닌지는 사람만 압니다. 봇이 마음대로 정하지 않습니다.
+  let stale = "";
+  if (prevName && box.place_name && box.place_name !== prevName){
+    if (box.taxi_to === prevName) stale = "taxi_to";
+    else if (box.taxi_from === prevName) stale = "taxi_from";
+  }
+  if (stale){
+    lastAsked = stale;
+    bubble("bot", head + esc(
+      "장소를 " + box.place_name + " 로 바꿨습니다.\n" +
+      LABEL[stale] + " 이 아직 " + prevName + " 입니다. " +
+      box.place_name + " 로 같이 바꿀까요? 그대로 두셔도 됩니다."));
+    return;
+  }
 
   if (missing.length){
     lastAsked = missing[0];
@@ -1071,7 +1255,9 @@ async function chatSend(){
   lastAsked = "";
   const p = places.find(function(x){ return x.name === box.place_name; });
   const row = {
-    place_type: box.place_type, place_area: box.place_area, place_name: box.place_name,
+    place_domain: box.place_domain, place_type: box.place_type, place_area: box.place_area,
+    place_price: box.place_price || null, place_filters: st.filters.slice(),
+    place_name: box.place_name,
     place_address: p ? p.address : "", place_phone: p ? p.phone : "",
     place_rating: p ? p.rating : null,
     taxi_link: "none", taxi_from: box.taxi_from, taxi_to: box.taxi_to,
@@ -1187,16 +1373,14 @@ if (LAB){
     ASK.filter(function(k){ return k.indexOf("taxi") === 0; }).length;
 }
 
-fillSelect($("f-type"), TYPES, "골라주세요");
 fillSelect($("f-area"), AREAS, "골라주세요");
 buildChips();
-buildLinkChips();
-refreshNames();
-render();
+setupDomain();          // 갈래가 비어 있으면 아래 칸을 다 감춥니다
 paintRecords();
 
 $("f-type").addEventListener("change", function(e){ state.place_type = e.target.value; refreshNames(); render(); });
 $("f-area").addEventListener("change", function(e){ state.place_area = e.target.value; refreshNames(); render(); });
+$("f-price").addEventListener("change", function(e){ state.place_price = e.target.value; refreshNames(); render(); });
 $("f-name").addEventListener("change", function(e){
   state.place_name = e.target.value;
   $("name-note").textContent = ""; $("name-note").className = "note";
