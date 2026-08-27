@@ -252,32 +252,34 @@ tr.editing{background:rgba(204,120,92,.10)}
         </div>
         <div class="fields">
           <div class="field" id="wrap-domain">
+            <span class="field__label">갈래 <span class="tag tag--req">필수</span></span>
             <div class="chips" role="group" aria-label="장소 갈래" id="f-domain"></div>
           </div>
           <div class="row2">
             <div class="field" id="wrap-type">
-              <label class="field__label" for="f-type">종류</label>
+              <label class="field__label" for="f-type">종류 <span class="tag tag--req">필수</span></label>
               <select id="f-type"></select>
             </div>
             <div class="field" id="wrap-area">
-              <label class="field__label" for="f-area">지역</label>
+              <label class="field__label" for="f-area">지역 <span class="tag tag--req">필수</span></label>
               <select id="f-area"></select>
             </div>
           </div>
           <div class="field" id="wrap-price">
-            <label class="field__label" for="f-price">가격대</label>
+            <label class="field__label" for="f-price">가격대 <span class="tag tag--req">필수</span></label>
             <select id="f-price"></select>
           </div>
           <div class="field" id="wrap-filter">
-            <span class="field__label" id="filter-label">이런 곳이면 좋겠어요 <span class="tag">선택</span></span>
+            <span class="field__label" id="filter-label">조건 <span class="tag tag--opt">선택 · 비워도 됩니다</span></span>
             <div class="chips" role="group" aria-labelledby="filter-label" id="f-filter"></div>
           </div>
           <div class="field" id="wrap-name">
-            <label class="field__label" for="f-name">장소</label>
+            <label class="field__label" for="f-name">장소 <span class="tag tag--req">필수</span></label>
             <select id="f-name"></select>
             <p class="note" id="name-note"></p>
           </div>
           <div class="placecard" id="placecard" hidden>
+            <div class="placecard__meta"><span class="tag tag--auto">자동으로 채워짐</span></div>
             <div class="placecard__name" id="pc-name"></div>
             <div class="placecard__meta" id="pc-addr"></div>
             <div class="placecard__meta" id="pc-more"></div>
@@ -296,24 +298,24 @@ tr.editing{background:rgba(204,120,92,.10)}
         <div class="fields">
           <div class="row2">
             <div class="field" id="wrap-from">
-              <label class="field__label" for="f-from">타는 곳 <span class="tag" id="tag-from" hidden>장소 연결됨</span></label>
+              <label class="field__label" for="f-from">타는 곳 <span class="tag tag--req" id="req-from">필수</span><span class="tag tag--auto" id="tag-from" hidden>자동 · 장소 연결됨</span></label>
               <div class="locked" id="lock-from" hidden></div>
               <input id="f-from" type="text" placeholder="예) 호텔 파크" autocomplete="off">
               <p class="note"><button class="linkbtn" type="button" id="put-from" hidden></button></p>
             </div>
             <div class="field" id="wrap-to">
-              <label class="field__label" for="f-to">내리는 곳 <span class="tag" id="tag-to" hidden>장소 연결됨</span></label>
+              <label class="field__label" for="f-to">내리는 곳 <span class="tag tag--req" id="req-to">필수</span><span class="tag tag--auto" id="tag-to" hidden>자동 · 장소 연결됨</span></label>
               <div class="locked" id="lock-to" hidden></div>
               <input id="f-to" type="text" placeholder="예) 심미 호스텔" autocomplete="off">
               <p class="note"><button class="linkbtn" type="button" id="put-to" hidden></button></p>
             </div>
           </div>
           <div class="field" id="wrap-time" style="max-width:220px">
-            <label class="field__label" for="f-time">출발 시간</label>
+            <label class="field__label" for="f-time">출발 시간 <span class="tag tag--req">필수</span></label>
             <input id="f-time" type="time">
           </div>
           <div class="field" id="wrap-class">
-            <span class="field__label" id="taxi-class-label">택시 종류</span>
+            <span class="field__label" id="taxi-class-label">택시 종류 <span class="tag tag--req">필수</span></span>
             <div class="chips" role="group" aria-labelledby="taxi-class-label" id="f-class"></div>
           </div>
           <p class="err" id="form-err" hidden></p>
@@ -735,6 +737,7 @@ function render(){
     $("f-" + side).hidden = locked;
     $("lock-" + side).hidden = !locked;
     $("tag-" + side).hidden = !locked;
+    $("req-" + side).hidden = locked;   // 자동으로 채워지는 칸은 필수 표시를 뗍니다
     const btn = $("put-" + side);
     if (locked){
       $("lock-" + side).textContent = val || "위에서 장소를 고르면 채워집니다";
@@ -757,6 +760,19 @@ function render(){
   }).join("");
 
   const priceOn = ASK.indexOf("place_price") >= 0;
+  // 각 단계에 필수 몇 칸인지 알려 줍니다. 얼마나 남았는지 가늠이 됩니다.
+  if (state.place_domain){
+    const pReq = ASK.filter(function(k){ return k.indexOf("place") === 0; }).length;
+    const tReq = ASK.filter(function(k){ return k.indexOf("taxi") === 0; }).length;
+    const tAuto = (state.taxi_link === "none") ? 0 : 1;
+    $("hint-place").textContent = "필수 " + pReq + " · 선택 1 · 자동 3";
+    $("hint-taxi").textContent  = "필수 " + (tReq - tAuto) + (tAuto ? " · 자동 2" : " · 자동 1");
+    $("hint-place").hidden = false;
+    $("hint-taxi").hidden = false;
+  } else {
+    $("hint-place").hidden = true;
+    $("hint-taxi").hidden = true;
+  }
   if (LAB){
     $("board-place").innerHTML =
         slotRow("place_domain", v.place_domain, false)
@@ -1389,8 +1405,6 @@ if (LAB){
   $("sum-title").textContent = "슬롯 보드";
   $("lbl-place").textContent = "관광";
   $("lbl-taxi").textContent = "택시";
-  $("hint-place").hidden = false;
-  $("hint-taxi").hidden = false;
   Array.prototype.forEach.call(document.querySelectorAll(".lab-col"), function(el){ el.hidden = false; });
 
   // 봇이 어떤 설정으로 도는지 같이 보여 줍니다. 비교할 때 기준이 됩니다.
@@ -1405,10 +1419,6 @@ if (LAB){
   if (UNKNOWN.length) bits.push("모르는 칸: " + UNKNOWN.join(", "));
   $("bot-cfg").textContent = bits.join(" · ");
   $("bot-cfg").hidden = false;
-  $("hint-place").textContent = "묻는 칸 " +
-    ASK.filter(function(k){ return k.indexOf("place") === 0; }).length;
-  $("hint-taxi").textContent = "묻는 칸 " +
-    ASK.filter(function(k){ return k.indexOf("taxi") === 0; }).length;
 }
 
 fillSelect($("f-area"), AREAS, "골라주세요");
