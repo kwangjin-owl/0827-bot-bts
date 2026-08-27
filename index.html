@@ -548,6 +548,11 @@ const esc = function(s){
 };
 const refOf = function(r){ return "TX-" + String(r.ref).padStart(4,"0"); };
 // 한국어 조사는 앞 글자 받침에 따라 갈립니다. 받침이 있으면 "으로".
+const eun = function(w){
+  const c = String(w).charCodeAt(String(w).length - 1) - 0xAC00;
+  if (c < 0 || c > 11171) return "는";
+  return (c % 28) ? "은" : "는";
+};
 const josa = function(w){
   const c = String(w).charCodeAt(String(w).length - 1) - 0xAC00;
   if (c < 0 || c > 11171) return "로";
@@ -1031,6 +1036,36 @@ if (SLOTS && SLOTS.ask){
   });
 }
 
+// 입력창에 띄울 짧은 보기
+const HINT = {
+  place_domain:"예) 관광지요", place_type:"예) 랜드마크", place_area:"예) 서울 북쪽",
+  place_price:"예) 적당", place_name:"예) 경복궁",
+  taxi_from:"예) 호텔 파크", taxi_to:"예) 서울역",
+  taxi_depart_at:"예) 오후 6시", taxi_class:"예) 에코"
+};
+
+// 물을 때는 지금 고를 수 있는 것을 같이 보여 줍니다.
+// "종류를 골라주세요" 만으로는 무엇을 고르라는 건지 알 수 없습니다.
+function askText(k){
+  const d = state.place_domain;
+  if (k === "place_domain") return "무엇을 찾으세요?  관광지 · 숙소 · 식당 중에서요.";
+  if (k === "place_type" && d && TYPES_BY_DOMAIN[d] && TYPES_BY_DOMAIN[d].length)
+    return "어떤 종류로 찾을까요?\n" + TYPES_BY_DOMAIN[d].join(" · ") + " 중에서요.";
+  if (k === "place_area")
+    return "어느 지역으로 찾을까요?\n서울 중앙 · 북쪽 · 남쪽 · 동쪽 · 서쪽 중에서요.";
+  if (k === "place_price")
+    return "가격대는 어느 정도로 볼까요?  저렴 · 적당 · 비싼 중에서요.";
+  if (k === "place_name"){
+    const c = matching();
+    if (c.length && c.length <= 8)
+      return "어디로 할까요?\n" + c.map(function(p){ return p.name; }).join(" · ") + " 중에서요.";
+    if (c.length) return "가고 싶은 곳 이름을 말씀해 주세요.  지금 " + c.length + "곳이 조건에 맞습니다.";
+    return "가고 싶은 곳 이름을 말씀해 주세요.";
+  }
+  if (k === "taxi_class") return "택시 종류는요?  고급 · 에코 · 개인 · 상관없음 중에서요.";
+  return QUESTION[k];
+}
+
 let turns = [];      // [{me, bot}] 지나간 주고받기
 let lastAsked = "";  // 방금 물어본 칸. "아무거나" 같은 답을 어디에 넣을지 정합니다
 
@@ -1047,14 +1082,22 @@ function findPlace(t){
 
 function grabSide(t, markers){
   // "호텔 파크에서 출발" 처럼 표지 앞에 붙은 말을 떼어 옵니다.
+  // 앞쪽에 다른 표지(에서/으로/까지)가 또 있으면 거기서 자릅니다.
+  // 그래야 "호텔 파크에서 타고 경복궁에서 내려요" 에서 경복궁만 집힙니다.
   for (let i = 0; i < markers.length; i++){
-    const re = new RegExp("([가-힣A-Za-z0-9&()\\s]{2,24}?)\\s*" + markers[i]);
-    const m = t.match(re);
-    if (m){
-      let v = m[1].trim().replace(/^(그냥|그럼|이제|그리고|근데|아|저|네|일단|음)\s+/, "").trim();
-      const known = findPlace(v);
-      return known || v;
-    }
+    const m = t.match(new RegExp("^([\\s\\S]*?)" + markers[i]));
+    if (!m) continue;
+    let head = m[1];
+    const cut = head.lastIndexOf("에서");
+    const cut2 = Math.max(head.lastIndexOf("까지"), head.lastIndexOf("으로"), head.lastIndexOf("부터"));
+    const at = Math.max(cut, cut2);
+    if (at >= 0) head = head.slice(at + 2);
+    const v = head.trim()
+      .replace(/^(그냥|그럼|이제|그리고|근데|아|저|네|일단|음|타고|가고|출발해서|해서)\s+/, "")
+      .replace(/^(타고|가고|해서)\s*/, "").trim();
+    if (!v) continue;   // "집" 처럼 한 글자짜리도 살립니다
+    const known = findPlace(v);
+    return known || v;
   }
   return "";
 }
@@ -1182,10 +1225,10 @@ function pickOne(text){
   }
 
   const from = grabSide(t, ["에서\\s*(?:출발|타|탈|탑승)", "부터\\s*(?:출발|타)"])
-            || grabAfter(t, ["출발지", "타는 곳", "출발점"]);
+            || grabAfter(t, ["출발지", "타는 곳", "출발점", "타는", "탈 곳"]);
   if (from) got.taxi_from = from;
   const to = grabSide(t, ["(?:으로|로)\\s*(?:가|갈|갑니|이동)", "까지", "에\\s*(?:도착|가)", "에서\\s*내"])
-          || grabAfter(t, ["도착지", "목적지", "내리는 곳"]);
+          || grabAfter(t, ["도착지", "목적지", "내리는 곳", "도착", "내려", "내릴"]);
   if (to) got.taxi_to = to;
 
   return got;
@@ -1262,6 +1305,28 @@ async function chatSend(){
       got.taxi_to   = got.taxi_to   || s.taxi_from || "";
     }
   }
+  // 봇이 방금 물어본 칸이 있으면, 짧은 답은 그 칸의 답으로 읽습니다.
+  // "어디서 타실지" 에 "경복궁이요" 라고 답한 것을 새 목적지로 받으면 안 됩니다.
+  const saidEndpoint = !!(got.taxi_from || got.taxi_to);
+  if ((lastAsked === "taxi_from" || lastAsked === "taxi_to") && !got[lastAsked] && !saidEndpoint){
+    // 어느 칸인지 문장이 이미 말하고 있으면 건드리지 않습니다.
+    const changing = /바꾸|바꿀|바꿔|말고|대신|아니라|장소|정할|할게|숙소|식당|관광/.test(text);
+    // 그리고 정말 이름만 달랑 답한 경우여야 합니다.
+    const nmLen = (got.place_name || "").replace(/\s/g, "").length;
+    const bare = text.replace(/\s/g, "").length <= nmLen + 6;
+    if (!changing && bare){
+      if (got.place_name){
+        got[lastAsked] = got.place_name;
+        ["place_name","place_domain","place_type","place_area","place_price"]
+          .forEach(function(k){ delete got[k]; });
+      } else if (!Object.keys(got).length){
+        // 사전에 없는 지명일 수 있습니다. 말끝만 떼고 그대로 씁니다.
+        const v = text.trim().replace(/(이요|예요|이에요|입니다|요|로|으로)$/, "").trim();
+        if (v.length >= 2 && v.length <= 20) got[lastAsked] = v;
+      }
+    }
+  }
+
   turns.push({ me: text, got: got });
 
   const st = chatSlots();
@@ -1294,9 +1359,9 @@ async function chatSend(){
   if (stale){
     lastAsked = stale;
     bubble("bot", head + esc(
-      "장소를 " + box.place_name + " 로 바꿨습니다.\n" +
-      LABEL[stale] + " 이 아직 " + prevName + " 입니다. " +
-      box.place_name + " 로 같이 바꿀까요? 그대로 두셔도 됩니다."));
+      "장소를 " + box.place_name + josa(box.place_name) + " 바꿨습니다.\n" +
+      LABEL[stale] + eun(LABEL[stale]) + " 아직 " + prevName + "입니다. " +
+      box.place_name + josa(box.place_name) + " 같이 바꿀까요? 그대로 두셔도 됩니다."));
     return;
   }
 
@@ -1330,7 +1395,7 @@ async function chatSend(){
       });
       if (box.place_name){
         // 이미 고른 장소가 있으면 그것을 확인해 줍니다. 후보를 다시 보여주면 안 고른 줄 압니다.
-        lead = "장소는 " + box.place_name + " 입니다.\n\n";
+        lead = "장소는 " + box.place_name + "입니다.\n\n";
       } else if (box.place_domain){
         const cand = matching();
         const tail = heard.join(" · ");
@@ -1364,13 +1429,15 @@ async function chatSend(){
       : "필수 " + ASK.length + "칸 중 " + done + "칸 채웠어요. " + missing.length + "칸 남았습니다.\n";
 
     const body = (STYLE === "all_at_once")
-      ? missing.map(function(k){ return "· " + QUESTION[k]; }).join("\n")
-      : QUESTION[missing[0]];
+      ? missing.map(function(k){ return "· " + askText(k); }).join("\n")
+      : askText(missing[0]);
+    $("chat-input").placeholder = HINT[missing[0]] || "";
     bubble("bot", head + esc(lead + bar + body));
     return;
   }
 
   lastAsked = "";
+  $("chat-input").placeholder = "";
   const p = places.find(function(x){ return x.name === box.place_name; });
   const row = {
     place_domain: box.place_domain, place_type: box.place_type, place_area: box.place_area,
@@ -1415,7 +1482,8 @@ async function chatSend(){
 function chatReset(){
   turns = []; lastAsked = "";
   $("chat-log").innerHTML = "";
-  bubble("bot", "안녕하세요. 찾으시는 곳과 택시를 말씀해 주세요.\n예) 헬스장 있는 숙소요 / 서울 북쪽 일식당이요");
+  $("chat-input").placeholder = HINT.place_domain;
+  bubble("bot", esc("안녕하세요. 택시까지 한 번에 잡아 드릴게요.\n먼저 어디를 찾으시나요?  관광지 · 숙소 · 식당 중에서요.\n\n한 번에 몰아 말씀하셔도 됩니다.  예) 헬스장 있는 숙소요"));
 }
 
 function showTab(which){
