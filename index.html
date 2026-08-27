@@ -49,7 +49,7 @@ h1{font-family:var(--serif);font-size:44px;font-weight:400;letter-spacing:-.035e
 .config__note{font-size:14px;color:var(--muted);margin:0 0 20px;max-width:70ch}
 .config__note code{font-family:var(--mono);font-size:12.5px;background:var(--cream-strong);padding:2px 6px;border-radius:4px;color:var(--body-strong)}
 
-.desk{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px;margin-top:48px;align-items:start}
+.desk{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px;margin-top:32px;align-items:start}
 
 .step{background:var(--surface-card);border-radius:12px;padding:0 0 32px;margin-bottom:24px}
 .step__head{display:flex;align-items:center;gap:12px;padding:26px 32px 20px}
@@ -155,13 +155,8 @@ tr.editing{background:rgba(204,120,92,.10)}
 
 .tabs{display:flex;gap:6px;margin:0 0 20px;padding:5px;background:var(--surface-card);border-radius:999px;width:fit-content;max-width:100%;flex-wrap:wrap}
 .tab{font-family:var(--sans);font-size:14.5px;font-weight:500;padding:10px 20px;border:none;border-radius:999px;background:none;color:var(--muted);cursor:pointer;transition:background .15s,color .15s}
-  font-family:var(--sans);font-size:15px;font-weight:400;padding:12px 20px;cursor:pointer;
-  background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);
-  margin-bottom:-1px;transition:color .15s,border-color .15s;
-}
 .tab:hover{color:var(--ink)}
 .tab[aria-selected="true"]{background:var(--canvas);color:var(--ink)}
-.desk{margin-top:32px}
 .col{min-width:0}
 
 .botpanel{margin-top:0}
@@ -252,13 +247,12 @@ tr.editing{background:rgba(204,120,92,.10)}
         <div class="step__head">
           <span class="step__dot" aria-hidden="true"></span>
           <span class="step__num">01</span>
-          <span class="step__name" id="s1">어디로 가시나요</span>
+          <span class="step__name" id="s1">장소</span>
           <span class="step__hint" id="hint-place" hidden>묻는 칸 3 · 자동 칸 3</span>
         </div>
         <div class="fields">
           <div class="field" id="wrap-domain">
-            <span class="field__label" id="domain-label">무엇을 찾으세요</span>
-            <div class="chips" role="group" aria-labelledby="domain-label" id="f-domain"></div>
+            <div class="chips" role="group" aria-label="장소 갈래" id="f-domain"></div>
           </div>
           <div class="row2">
             <div class="field" id="wrap-type">
@@ -266,7 +260,7 @@ tr.editing{background:rgba(204,120,92,.10)}
               <select id="f-type"></select>
             </div>
             <div class="field" id="wrap-area">
-              <label class="field__label" for="f-area">어느 지역으로</label>
+              <label class="field__label" for="f-area">지역</label>
               <select id="f-area"></select>
             </div>
           </div>
@@ -296,28 +290,26 @@ tr.editing{background:rgba(204,120,92,.10)}
         <div class="step__head">
           <span class="step__dot" aria-hidden="true"></span>
           <span class="step__num">02</span>
-          <span class="step__name" id="s2">택시 부르기</span>
+          <span class="step__name" id="s2">택시</span>
           <span class="step__hint" id="hint-taxi" hidden>묻는 칸 4 · 그중 1칸은 장소에서 옴</span>
         </div>
         <div class="fields">
-          <div class="field" id="wrap-link">
-            <span class="field__label" id="link-label">택시를 어떻게 쓰시나요</span>
-            <div class="chips" role="group" aria-labelledby="link-label" id="f-link"></div>
-          </div>
           <div class="row2">
             <div class="field" id="wrap-from">
-              <label class="field__label" for="f-from">어디서 타세요 <span class="tag" id="tag-from" hidden>자동</span></label>
+              <label class="field__label" for="f-from">타는 곳 <span class="tag" id="tag-from" hidden>장소 연결됨</span></label>
               <div class="locked" id="lock-from" hidden></div>
               <input id="f-from" type="text" placeholder="예) 호텔 파크" autocomplete="off">
+              <p class="note"><button class="linkbtn" type="button" id="put-from" hidden></button></p>
             </div>
             <div class="field" id="wrap-to">
-              <label class="field__label" for="f-to">어디서 내리세요 <span class="tag" id="tag-to" hidden>자동</span></label>
+              <label class="field__label" for="f-to">내리는 곳 <span class="tag" id="tag-to" hidden>장소 연결됨</span></label>
               <div class="locked" id="lock-to" hidden></div>
               <input id="f-to" type="text" placeholder="예) 심미 호스텔" autocomplete="off">
+              <p class="note"><button class="linkbtn" type="button" id="put-to" hidden></button></p>
             </div>
           </div>
           <div class="field" id="wrap-time" style="max-width:220px">
-            <label class="field__label" for="f-time">언제 출발하세요</label>
+            <label class="field__label" for="f-time">출발 시간</label>
             <input id="f-time" type="time">
           </div>
           <div class="field" id="wrap-class">
@@ -451,7 +443,6 @@ Object.keys(TYPES_BY_DOMAIN).forEach(function(d){ TYPES_BY_DOMAIN[d].sort(); });
 const AREAS   = ["서울 중앙","서울 북쪽","서울 남쪽","서울 동쪽","서울 서쪽","상관없음"];
 const PRICES  = ["저렴","적당","비싼","상관없음"];
 const CLASSES = ["고급","에코","개인","상관없음"];
-const LINKS   = [["from","장소에서 출발해요"],["to","장소로 갈게요"],["none","장소와 상관없어요"]];
 const ANY = "상관없음";
 
 // settings.py 의 칸 이름을 웹 내부 이름에 맞춥니다.
@@ -472,7 +463,17 @@ const WRAP = {
 
 const SLOTS = CFG.SLOTS || null;
 const DOMAINS = (SLOTS && SLOTS.domains) ? Object.keys(SLOTS.domains) : ["관광","숙소","식당"];
-const FILTERS = (SLOTS && SLOTS.filters) || {};
+
+// settings.py 의 FILTERS 를 못 읽었을 때 쓰는 기본값입니다.
+// 이게 없으면 config.js 가 없는 환경에서 조건 칩이 통째로 사라집니다.
+const DEFAULT_FILTERS = {
+  "관광": ["역사적","경치 좋은","교육적","문화 예술","주차 가능","도보 가능"],
+  "숙소": ["헬스장 유무","조식 가능","인터넷 가능","주차 가능",
+           "수영장 유무","스파 유무","흡연 가능","도보 가능"],
+  "식당": ["주류 판매","야외석 유무","주차 가능","인터넷 가능","흡연 가능","도보 가능"]
+};
+const FILTERS = (SLOTS && SLOTS.filters && Object.keys(SLOTS.filters).length)
+  ? SLOTS.filters : DEFAULT_FILTERS;
 
 // 지금 고른 도메인에서 묻는 칸만 돌려줍니다. 도메인을 바꾸면 칸도 바뀝니다.
 function askFor(dom){
@@ -522,7 +523,8 @@ let prevAuto = {};
 const state = {
   place_domain:"", place_type:"", place_area:"", place_price:"", place_name:"",
   place_filters:[],                 // 조건. 묻는 칸이 아니라 후보를 좁히는 장치입니다
-  taxi_link:"from", taxi_from:"", taxi_to:"",
+  taxi_link:"none",              // 어느 칸도 장소에 안 묶인 상태로 시작합니다
+  taxi_from:"", taxi_to:"",
   taxi_depart_at:"", taxi_class:""
 };
 // 지금 도메인에서 묻는 칸. 도메인을 바꿀 때마다 다시 계산합니다.
@@ -679,20 +681,23 @@ function setupDomain(){
     if (w) w.hidden = ASK.indexOf(k) < 0;
   });
   if (!d){ ["wrap-type","wrap-area","wrap-price","wrap-name","wrap-filter"].forEach(function(w){ $(w).hidden = true; }); }
-  $("wrap-link").hidden = !canLink() || !d;
-  if (!canLink()) state.taxi_link = "none";
-  buildDomainChips(); buildFilterChips(); buildLinkChips(); refreshNames(); render();
+  buildDomainChips(); buildFilterChips(); refreshNames(); render();
 }
-function buildLinkChips(){
-  chipGroup("f-link", LINKS, state.taxi_link, function(key){
-    if (state.taxi_link === key) return;
-    // 방향을 바꾸면 잠겨 있던 쪽이 풀리고 반대쪽이 잠깁니다. 값을 옮겨 담습니다.
-    const before = values();
-    state.taxi_link = key;
-    state.taxi_from = (key === "from") ? "" : before.taxi_from;
-    state.taxi_to   = (key === "to")   ? "" : before.taxi_to;
-    buildLinkChips(); render();
-  });
+// 장소를 택시 칸에 넣는 버튼. "방향" 이라는 말을 화면에서 없애고
+// 어느 칸에 넣느냐로 대신합니다. 넣은 칸은 장소를 바꾸면 같이 따라갑니다.
+function putPlace(side){
+  state.taxi_link = side;
+  if (side === "from") state.taxi_from = ""; else state.taxi_to = "";
+  render();
+}
+function unputPlace(){
+  // 연결을 풀면 지금 값을 그대로 남겨 둡니다. 갑자기 비면 당황스러우니까요.
+  const v = values();
+  const side = state.taxi_link;
+  state.taxi_link = "none";
+  if (side === "from") state.taxi_from = v.taxi_from;
+  else if (side === "to") state.taxi_to = v.taxi_to;
+  render();
 }
 
 function slotRow(key, value, auto){
@@ -731,12 +736,18 @@ function render(){
     const val = side === "from" ? v.taxi_from : v.taxi_to;
     $("f-" + side).hidden = locked;
     $("lock-" + side).hidden = !locked;
-    $("tag-" + side).hidden = !(locked && LAB);
+    $("tag-" + side).hidden = !locked;
+    const btn = $("put-" + side);
     if (locked){
       $("lock-" + side).textContent = val || "위에서 장소를 고르면 채워집니다";
       $("lock-" + side).className = val ? "locked" : "locked is-empty";
+      btn.hidden = false;
+      btn.textContent = "연결 끊기";
     } else {
       $("f-" + side).value = val;
+      // 장소를 골랐고 이 칸이 아직 안 잠겼을 때만 넣기 버튼을 보여 줍니다.
+      btn.hidden = !v.place_name;
+      btn.textContent = v.place_name ? "‘" + v.place_name + "’ 넣기" : "";
     }
   });
 
@@ -895,13 +906,13 @@ async function save(){
 function reset(keepStatus){
   ALL_ASK.forEach(function(k){ state[k] = ""; });
   state.place_filters = [];
-  state.taxi_link = "from";
+  state.taxi_link = "none";
   ASK = askFor("");
   editingId = null;
   $("name-note").textContent = "";
   $("form-err").hidden = true;
   if (!keepStatus) $("status").textContent = "";
-  refreshNames(); buildChips(); buildLinkChips(); render(); paintRecords();
+  refreshNames(); buildChips(); render(); paintRecords();
 }
 
 function edit(id){
@@ -923,7 +934,7 @@ function edit(id){
   $("done").hidden = true;
   $("summary").hidden = false;
   $("status").textContent = refOf(r) + " 변경 중";
-  refreshNames(); buildChips(); buildLinkChips(); render(); paintRecords();
+  refreshNames(); buildChips(); render(); paintRecords();
   window.scrollTo({top:0, behavior:"smooth"});
 }
 
@@ -1218,7 +1229,7 @@ async function chatSend(){
     fillSelect($("f-type"), (TYPES_BY_DOMAIN[state.place_domain] || []).concat([ANY]), "골라주세요");
     ALL_ASK.forEach(function(k){ const w = $(WRAP[k]); if (w) w.hidden = ASK.indexOf(k) < 0; });
   }
-  buildDomainChips(); buildFilterChips(); buildChips(); buildLinkChips();
+  buildDomainChips(); buildFilterChips(); buildChips();
   refreshNames(); render();
   const missing = ASK.filter(function(k){ return !box[k]; });
   const head = LAB ? labHeader(box, ever) : "";
@@ -1388,6 +1399,10 @@ $("f-name").addEventListener("change", function(e){
 });
 $("f-from").addEventListener("input", function(e){ state.taxi_from = e.target.value; render(); });
 $("f-to").addEventListener("input", function(e){ state.taxi_to = e.target.value; render(); });
+$("put-from").addEventListener("click", function(){
+  state.taxi_link === "from" ? unputPlace() : putPlace("from"); });
+$("put-to").addEventListener("click", function(){
+  state.taxi_link === "to" ? unputPlace() : putPlace("to"); });
 $("f-time").addEventListener("input", function(e){ state.taxi_depart_at = e.target.value; render(); });
 $("submit").addEventListener("click", save);
 $("cancel").addEventListener("click", function(){ reset(); });
