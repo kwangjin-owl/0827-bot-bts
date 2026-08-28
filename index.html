@@ -223,9 +223,10 @@ tr.editing{background:rgba(204,120,92,.10)}
     <p class="eyebrow">장소 예약 · 택시 배차</p>
     <h1>가는길</h1>
   </div>
-  <div class="masthead__meta" id="lab-meta" hidden>
-    <span class="badge" id="mode-badge">로컬 모드</span>
-    <button class="linkbtn" id="config-toggle" type="button">Supabase 연결</button>
+  <div class="masthead__meta" id="lab-meta">
+    <span class="badge" id="mode-badge" hidden>로컬 모드</span>
+    <button class="linkbtn" id="config-toggle" type="button" hidden>Supabase 연결</button>
+    <a class="linkbtn" id="lab-link" href="test">계측 화면 ↗</a>
     <a class="linkbtn" id="flow-link" href="flow.html">흐름도 ↗</a>
   </div>
 </header>
@@ -1723,12 +1724,22 @@ if (LAB){
   paintHist();
 }
 
+// 링크 주소. 배포에서는 /flow · /test, 내 컴퓨터 파일에서는 파일 이름으로 갑니다.
+// /test/ 처럼 빗금이 붙으면 상대 경로가 어긋나므로 갈라 둡니다.
+const FILE_MODE = (location.protocol === "file:");
+$("flow-link").href = FILE_MODE ? "flow.html" : "/flow";
+// 계측 화면에서는 같은 자리가 손님 화면으로 돌아가는 문이 됩니다.
+if (LAB){
+  $("lab-link").textContent = "손님 화면 ↗";
+  $("lab-link").href = FILE_MODE ? "index.html" : "/";
+} else {
+  $("lab-link").href = FILE_MODE ? "index.html?lab=1" : "/test";
+}
+
 if (LAB){
   document.title = "가는길 · 실습 모드";
-  $("lab-meta").hidden = false;
-  // 배포에서는 /flow, 내 컴퓨터 파일에서는 flow.html.
-  // /test/ 처럼 빗금이 붙으면 상대 경로가 어긋나므로 갈라 둡니다.
-  $("flow-link").href = (location.protocol === "file:") ? "flow.html" : "/flow";
+  $("mode-badge").hidden = false;
+  $("config-toggle").hidden = false;
   $("counter").hidden = false;
   $("sum-title").textContent = "슬롯 보드";
   $("lbl-place").textContent = "관광";
@@ -1793,16 +1804,19 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY){
     // 손님에게는 기술 용어 대신 무슨 일이 생겼는지만 알립니다.
     $("rec-warn").textContent = "예약 내역을 불러오지 못했습니다. 지금 하신 예약은 이 화면에서만 보입니다.";
     $("rec-warn").hidden = false;
+    // 패널을 저절로 열지 않습니다. 키가 없는 것은 배포 설정 문제지
+    // 손님이 손으로 채울 일이 아닙니다. 보고는 배지로 하고,
+    // 정말 손으로 붙여 볼 때만 "Supabase 연결" 을 눌러 엽니다.
     if (LAB){
-      $("config").hidden = false;
       $("mode-badge").textContent = "연결 실패 · 로컬 모드";
       $("cfg-err").textContent = "자동 연결 실패 — " + (e.message || e);
       $("cfg-err").hidden = false;
     }
   });
 } else if (LAB){
-  $("config").hidden = false;
-  $("mode-badge").textContent = SUPABASE_URL ? "로컬 모드 · 키 없음" : "로컬 모드";
+  $("mode-badge").textContent = SUPABASE_URL
+    ? "로컬 모드 · 키 없음"
+    : "로컬 모드 · config.js 가 비었습니다";
 }
 </script>
 </body>
