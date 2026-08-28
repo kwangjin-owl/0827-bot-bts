@@ -1367,6 +1367,15 @@ async function chatSend(){
   }
   // 봇이 방금 물어본 칸이 있으면, 짧은 답은 그 칸의 답으로 읽습니다.
   // "어디서 타실지" 에 "경복궁이요" 라고 답한 것을 새 목적지로 받으면 안 됩니다.
+  // 이월 질문("어디서 타세요, 아니면 그리로 가세요?")에 대한 답을 읽습니다.
+  if (lastAsked === "carry"){
+    const cur = chatSlots().box.place_name;
+    if (cur && !got.taxi_from && !got.taxi_to){
+      if (/타|출발|승차|거기서|여기서/.test(text)) got.taxi_from = cur;
+      else if (/가|도착|내리|까지|그리로/.test(text)) got.taxi_to = cur;
+    }
+  }
+
   const saidEndpoint = !!(got.taxi_from || got.taxi_to);
   if ((lastAsked === "taxi_from" || lastAsked === "taxi_to") && !got[lastAsked] && !saidEndpoint){
     // 어느 칸인지 문장이 이미 말하고 있으면 건드리지 않습니다.
@@ -1422,6 +1431,31 @@ async function chatSend(){
       "장소를 " + box.place_name + josa(box.place_name) + " 바꿨습니다.\n" +
       LABEL[stale] + eun(LABEL[stale]) + " 아직 " + prevName + "입니다. " +
       box.place_name + josa(box.place_name) + " 같이 바꿀까요? 그대로 두셔도 됩니다."));
+    return;
+  }
+
+  // 장소를 정했는데 택시 양쪽 칸이 다 비었으면, 그 장소를 어느 쪽에 쓸지 먼저 묻습니다.
+  // 데이터에서는 장소가 출발지인 경우가 47%, 도착지가 24% 였습니다.
+  // 어느 쪽인지는 사람만 아니까 자동으로 정하지 않습니다. 이것이 두 도메인이 이어지는 지점입니다.
+  if (box.place_name && !box.taxi_from && !box.taxi_to
+      && ASK.indexOf("taxi_from") >= 0 && ASK.indexOf("taxi_to") >= 0){
+    lastAsked = "carry";
+    $("chat-input").placeholder = "예) " + box.place_name + josa(box.place_name) + " 가요";
+    const nm = box.place_name;
+    let pre = "";
+    if (got.place_name && got.place_name !== prevName){
+      const pp = places.find(function(x){ return x.name === nm; });
+      pre = nm + "요.";
+      if (pp){
+        const bits = [];
+        if (pp.address) bits.push(pp.address.replace(/\s*\d+\s*$/, "") + "에 있고");
+        if (pp.rating)  bits.push("평점은 " + pp.rating + "점이에요");
+        if (bits.length) pre += " " + bits.join(" ") + ".";
+      }
+      pre += "\n\n";
+    }
+    bubble("bot", head + esc(pre +
+      nm + "에서 택시를 타세요, 아니면 " + nm + josa(nm) + " 가세요?"));
     return;
   }
 
