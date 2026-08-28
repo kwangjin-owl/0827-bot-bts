@@ -1088,10 +1088,16 @@ function grabSide(t, markers){
     const m = t.match(new RegExp("^([\\s\\S]*?)" + markers[i]));
     if (!m) continue;
     let head = m[1];
-    const cut = head.lastIndexOf("에서");
-    const cut2 = Math.max(head.lastIndexOf("까지"), head.lastIndexOf("으로"), head.lastIndexOf("부터"));
-    const at = Math.max(cut, cut2);
-    if (at >= 0) head = head.slice(at + 2);
+    // 앞쪽에 다른 표지나 문장 경계가 있으면 거기서 자릅니다.
+    // "가야 호텔로 할게요. 호텔 파크에서 타고" 에서 호텔 파크만 남아야 합니다.
+    const SEP = ["에서", "까지", "으로", "부터", ".", ",", "!", "?",
+                 "타고 ", "가고 ", "하고 ", "해서 "];
+    let at = -1, len = 0;
+    SEP.forEach(function(sp){
+      const i = head.lastIndexOf(sp);
+      if (i > at){ at = i; len = sp.length; }
+    });
+    if (at >= 0) head = head.slice(at + len);
     const v = head.trim()
       .replace(/^(그냥|그럼|이제|그리고|근데|아|저|네|일단|음|타고|가고|출발해서|해서)\s+/, "")
       .replace(/^(타고|가고|해서)\s*/, "").trim();
@@ -1368,68 +1374,65 @@ async function chatSend(){
   if (missing.length){
     lastAsked = missing[0];
 
-    let lead = "";
-    const justPicked = box.place_name && box.place_name !== prevName;
-
-    if (justPicked){
-      // 자동으로 채운 값을 알려 줍니다. 사람이 적을 칸이 아니라는 걸 밝히는 것입니다.
-      const pp = places.find(function(x){ return x.name === box.place_name; });
-      lead = box.place_name + josa(box.place_name) + " 정했어요.\n";
+    // 이번 턴에 알아들은 것을 사람 말로 되짚습니다.
+    // 칸 개수를 세어 읽어 주는 건 손님이 아니라 저를 위한 말이었습니다.
+    const ack = [];
+    // 이미 알고 있던 장소를 다시 소개하지 않습니다. 새로 정해졌을 때만 말합니다.
+    if (got.place_name && got.place_name !== prevName){
+      const pp = places.find(function(x){ return x.name === got.place_name; });
+      let line = got.place_name + "요.";
       if (pp){
-        const auto = [];
-        if (pp.address) auto.push("주소 " + pp.address);
-        if (pp.phone)   auto.push("연락처 " + pp.phone);
-        if (pp.rating)  auto.push("평점 " + pp.rating);
-        if (auto.length) lead += auto.join(" · ") + " 은 제가 채웠어요.\n";
+        const bits = [];
+        if (pp.address) bits.push(pp.address.replace(/\s*\d+\s*$/, "") + "에 있고");
+        if (pp.rating)  bits.push("평점은 " + pp.rating + "점이에요");
+        if (bits.length) line += " " + bits.join(" ") + ".";
       }
-      lead += "\n";
-    } else {
-      // 알아들은 것과 남은 후보를 되짚어 줍니다.
-      const heard = [];
-      if (box.place_domain) heard.push(box.place_domain === "관광" ? "관광지" : box.place_domain);
-      if (box.place_type)   heard.push(box.place_type);
-      if (box.place_price)  heard.push(box.place_price);
-      if (box.place_area)   heard.push(box.place_area);
+      ack.push(line);
+    } else if (!box.place_name && (got.place_domain || got.place_type || got.place_area
+               || got.place_price || got.filters_on || got.filters_off)){
+      // 아직 장소를 못 고른 동안만 후보 수를 세어 줍니다.
+      const cand = matching();
+      const w = [];
+      if (box.place_domain) w.push(box.place_domain === "관광" ? "관광지" : box.place_domain);
+      if (box.place_type)   w.push(box.place_type);
+      if (box.place_price)  w.push(box.place_price);
+      if (box.place_area)   w.push(box.place_area);
       st.filters.forEach(function(f){
-        heard.push(f.replace(/\s*유무$/, "").replace(/\s*가능$/, "") + " 있는 곳");
+        w.push(f.replace(/\s*유무$/, "").replace(/\s*가능$/, "") + " 있는 곳");
       });
-      if (box.place_name){
-        // 이미 고른 장소가 있으면 그것을 확인해 줍니다. 후보를 다시 보여주면 안 고른 줄 압니다.
-        lead = "장소는 " + box.place_name + "입니다.\n\n";
-      } else if (box.place_domain){
-        const cand = matching();
-        const tail = heard.join(" · ");
-        lead = (tail ? tail + josa(tail) + " " : "") + cand.length + "곳 있어요.";
-        if (cand.length && cand.length <= 6){
-          lead += "\n" + cand.map(function(p){ return p.name; }).join(", ");
-        } else if (cand.length){
-          lead += " 예를 들면 " + cand.slice(0,3).map(function(p){ return p.name; }).join(", ") + " 같은 곳이요.";
-        }
-        lead += "\n\n";
-      } else if (heard.length){
-        lead = heard.join(" · ") + "\n\n";
-      }
+      const tail = w.join(" · ");
+      ack.push((tail ? tail + josa(tail) + " " : "") + cand.length + "곳이 있어요.");
+      if (cand.length && cand.length <= 6)
+        ack.push(cand.map(function(x){ return x.name; }).join(" · "));
     }
+    if (got.taxi_from) ack.push(got.taxi_from + "에서 타시는군요.");
+    if (got.taxi_to)   ack.push(got.taxi_to + "에서 내리시고요.");
+    if (got.taxi_depart_at) ack.push(got.taxi_depart_at + " 출발이요.");
+    if (got.taxi_class) ack.push(got.taxi_class === ANY
+      ? "택시 종류는 상관없으시고요." : got.taxi_class + " 택시로요.");
+
+    let lead = ack.length ? ack.join("\n") + "\n\n" : "";
+    if (!ack.length && turns.length > 1) lead = "그 말씀은 잘 못 알아들었어요.\n\n";
 
     // 갈래를 막 정했으면 조건이 선택이라는 걸 한 번만 알려 줍니다.
-    // 조건은 후보를 좁히는 장치라, 이미 장소를 고른 뒤에는 안내할 이유가 없습니다.
     if (box.place_domain && box.place_domain !== prevDomain && !st.filters.length && !box.place_name){
       const f = (FILTERS[box.place_domain] || []).slice(0,2)
         .map(function(x){ return x.replace(/\s*유무$/, "").replace(/\s*가능$/, ""); });
-      if (f.length) lead += f.join(" · ") + " 같은 조건도 걸 수 있어요. 안 거셔도 됩니다.\n\n";
+      if (f.length) lead += f.join(" · ") + " 같은 조건을 걸어 좁힐 수도 있어요.\n\n";
     }
 
-    // 남은 칸을 알려 줍니다. 유저가 말했는데 제가 잊은 것은 잊었다고 밝힙니다.
-    // 그래야 "안 물어본 것" 과 "기억에서 밀려난 것" 이 구분됩니다.
+    // 앞서 답한 칸이 2턴 창 밖으로 밀려났으면 숨기지 않고 그대로 말합니다.
     const done = ASK.length - missing.length;
     const everCount = ASK.filter(function(k){ return ever[k]; }).length;
-    const bar = (everCount > done)
-      ? "필수 " + ASK.length + "칸 중 " + everCount + "칸 말씀하셨는데 제가 기억하는 건 " +
-        done + "칸이에요.\n앞 대화를 " + HIST + "턴까지만 봐서 그렇습니다. 다시 한 번 알려 주세요.\n"
-      : "필수 " + ASK.length + "칸 중 " + done + "칸 채웠어요. " + missing.length + "칸 남았습니다.\n";
+    if (everCount > done) lead += "앞서 말씀해 주신 걸 제가 놓쳤어요. 한 번만 더 부탁드려요.\n\n";
+
+    // 칸 개수는 실습 화면에서만 보여 줍니다.
+    const bar = LAB
+      ? "필수 " + ASK.length + "칸 중 " + done + "칸 · " + missing.length + "칸 남음\n"
+      : "";
 
     const body = (STYLE === "all_at_once")
-      ? missing.map(function(k){ return "· " + askText(k); }).join("\n")
+      ? missing.map(function(k){ return "\u00b7 " + askText(k); }).join("\n")
       : askText(missing[0]);
     $("chat-input").placeholder = HINT[missing[0]] || "";
     bubble("bot", head + esc(lead + bar + body));
@@ -1468,14 +1471,11 @@ async function chatSend(){
     console.error(e);
     return;
   }
-  const autoLine = [];
-  if (row.place_address) autoLine.push(row.place_address);
-  if (row.place_rating)  autoLine.push("평점 " + row.place_rating);
-  bubble("bot", head + "예약했습니다. <b>" + esc(ref) + "</b>\n" +
-    esc(row.place_name) + (autoLine.length ? esc("  (" + autoLine.join(" · ") + ")") : "") + "\n" +
-    esc(row.taxi_from + " → " + row.taxi_to) + "\n" +
-    esc(row.taxi_depart_at + " · " + row.taxi_class + " 택시") +
-    "\n기사님 " + esc(row.driver_phone) + "  <b>자동</b>");
+  bubble("bot", head +
+    "다 됐어요. " + esc(row.taxi_depart_at) + "에 " + esc(row.taxi_from) + "에서 " +
+    esc(row.taxi_class === ANY ? "택시" : row.taxi_class + " 택시") + "가 모시러 갑니다.\n" +
+    esc(row.taxi_to) + "까지 가시고요.\n\n" +
+    "예약번호 <b>" + esc(ref) + "</b>\n기사님 연락처 " + esc(row.driver_phone));
   turns = [];
 }
 

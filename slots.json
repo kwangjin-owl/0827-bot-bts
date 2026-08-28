@@ -105,6 +105,6 @@
     "평점": "장소 이름이 정해지면 자동 조회",
     "기사 연락처": "배차가 되면 자동 발급"
   },
-  "ask_style": "all_at_once",
+  "ask_style": "one_by_one",
   "history_turns": 2
 }
