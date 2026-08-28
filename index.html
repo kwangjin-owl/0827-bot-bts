@@ -124,6 +124,8 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .slot__v{flex:1;min-width:0;color:var(--on-dark);word-break:break-all}
 .slot__v.empty{color:rgba(250,249,245,.22);letter-spacing:.12em}
 .slot--auto .slot__v{color:var(--accent-amber);font-style:italic}
+.slot--forgot .slot__v{color:rgba(250,249,245,.34);text-decoration:line-through}
+.slot__lost{font-family:var(--mono);font-size:9.5px;color:var(--accent-amber);margin-left:6px;letter-spacing:0}
 .slot.flash{animation:flash 1.2s ease-out}
 @keyframes flash{0%{background:rgba(204,120,92,.42)}100%{background:transparent}}
 @media (prefers-reduced-motion:reduce){.slot.flash{animation:none}}
@@ -355,6 +357,7 @@ tr.editing{background:rgba(204,120,92,.10)}
         <p class="note" id="bot-cfg" hidden style="color:var(--on-dark-soft);margin:-6px 0 12px"></p>
         <div class="counter" id="counter" hidden><span id="filled">0</span>/<span id="total">7</span><small>묻는 칸</small></div>
         <div class="meter" id="meter" aria-hidden="true"></div>
+      <p class="note" id="forget-note" hidden style="color:var(--on-dark-soft);margin-top:10px">지운 글씨는 말씀하셨지만 봇이 2턴 창 밖으로 놓친 칸입니다.</p>
       </div>
       <div class="board__group" id="grp-place">
         <p class="board__label" id="lbl-place">가는 곳</p>
@@ -720,10 +723,17 @@ function unputPlace(){
 
 function slotRow(key, value, auto){
   const empty = (value === "" || value == null);
-  return '<div class="slot' + (auto && LAB ? " slot--auto" : "") + '" data-k="' + key + '">' +
+  // 말했지만 봇이 잊은 칸은 지운 글씨로 남겨 둡니다.
+  // 빈칸으로만 두면 안 물어본 것과 구분이 안 됩니다.
+  const lost = empty && forgot[key];
+  const cls = "slot" + (auto && LAB ? " slot--auto" : "") + (lost ? " slot--forgot" : "");
+  const body = lost
+    ? esc(forgot[key]) + '<span class="slot__lost">잊음</span>'
+    : (empty ? "······" : esc(value));
+  return '<div class="' + cls + '" data-k="' + key + '">' +
            '<span class="slot__k">' + LABEL[key] + '</span>' +
-           '<span class="slot__v' + (empty ? " empty" : "") + '">' +
-             (empty ? "······" : esc(value)) + '</span></div>';
+           '<span class="slot__v' + (empty && !lost ? " empty" : "") + '">' +
+             body + '</span></div>';
 }
 
 function render(){
@@ -1105,6 +1115,7 @@ async function extractLLM(text){
   return got;
 }
 
+let forgot = {};     // 말했지만 봇이 잊은 칸
 let turns = [];      // [{me, bot}] 지나간 주고받기
 let lastAsked = "";  // 방금 물어본 칸. "아무거나" 같은 답을 어디에 넣을지 정합니다
 
@@ -1371,8 +1382,9 @@ async function chatSend(){
   if (lastAsked === "carry"){
     const cur = chatSlots().box.place_name;
     if (cur && !got.taxi_from && !got.taxi_to){
-      if (/타|출발|승차|거기서|여기서/.test(text)) got.taxi_from = cur;
-      else if (/가|도착|내리|까지|그리로/.test(text)) got.taxi_to = cur;
+      // "갈게요" 의 "갈" 처럼 활용형까지 잡아야 합니다.
+      if (/타|탈|탑승|출발|승차|거기서|여기서/.test(text)) got.taxi_from = cur;
+      else if (/가|갈|갑|간다|감|도착|내리|내려|내릴|까지|그리로|거기로/.test(text)) got.taxi_to = cur;
     }
   }
 
@@ -1400,6 +1412,10 @@ async function chatSend(){
 
   const st = chatSlots();
   const box = st.box, ever = st.ever;
+
+  // 말은 했는데 2턴 창 밖으로 밀려난 칸. 요약판에서 따로 보여 줍니다.
+  forgot = {};
+  ALL_ASK.forEach(function(k){ if (ever[k] && !box[k]) forgot[k] = ever[k]; });
 
   // 갈래가 정해지면 그 갈래의 칸만 묻습니다. 폼과 같은 규칙입니다.
   if (box.place_domain) ASK = askFor(box.place_domain);
@@ -1575,8 +1591,13 @@ function chatReset(){
 }
 
 function showTab(which){
-  // 왼쪽 칼럼만 바뀝니다. 오른쪽 예약 요약은 두 방식 모두에서 그대로 차오릅니다.
+  // 왼쪽 칼럼만 바뀝니다. 오른쪽 요약판은 두 방식 모두에서 차오릅니다.
+  // 다만 챗봇에서는 "봇이 기억하는 것" 이라는 뜻이 되므로 제목을 바꿉니다.
   const bot = which === "bot";
+  if (!LAB){
+    $("sum-title").textContent = bot ? "봇이 기억하는 것" : "예약 요약";
+  }
+  $("forget-note").hidden = !bot;
   $("panel-form").hidden = bot;
   $("panel-bot").hidden = !bot;
   $("tab-form").setAttribute("aria-selected", bot ? "false" : "true");
