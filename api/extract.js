@@ -8,6 +8,13 @@
 // 뽑는 방식은 app.py 의 _extract_once 와 같습니다.
 // 같은 모델, 같은 프롬프트, 같은 파싱. 그래야 두 봇을 비교할 수 있습니다.
 //
+// history 를 받습니다
+//   앞서는 방금 친 말 한 줄만 받았습니다. 그래서 HISTORY_TURNS 를 무엇으로 두든
+//   모델이 보는 창은 늘 1턴이었고, 1과 2를 비교해도 모델 쪽 차이가 없었습니다.
+//   이제 브라우저가 최근 HISTORY_TURNS 개의 주고받기를 같이 보냅니다.
+//   넘긴 것 = HISTORY_TURNS x 2 + 1     (마지막 +1 이 방금 친 말)
+//   창 밖으로 나간 턴은 여기 안 실립니다. 그것이 "범위 밖으로 밀림" 입니다.
+//
 // 버셀 설정
 //   Settings -> Environment Variables
 //     GEMINI_API_KEY   필수
@@ -38,10 +45,28 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  // app.py 의 프롬프트를 글자 그대로 옮겼습니다.
+  // 창. 브라우저가 잘라서 보낸 것을 그대로 씁니다. 여기서 더 자르지 않습니다.
+  // 몇 턴을 넘길지는 settings.py 의 HISTORY_TURNS 가 정합니다.
+  const history = (body && Array.isArray(body.history)) ? body.history.slice(-8) : [];
+  const lines = [];
+  history.forEach(function (t) {
+    if (!t) return;
+    const u = t.user ? String(t.user).replace(/\s+/g, " ").slice(0, 300) : "";
+    const b = t.bot ? String(t.bot).replace(/\s+/g, " ").slice(0, 300) : "";
+    if (u) lines.push("user: " + u);
+    if (b) lines.push("assistant: " + b);
+  });
+
+  // app.py 의 프롬프트에 앞 대화 자리를 더했습니다.
+  // 창이 비어 있으면 그 자리를 통째로 빼서, 예전과 같은 문장이 나갑니다.
   const prompt =
     "다음 문장에서 아래 항목을 찾아 JSON 으로만 답하세요.\n" +
     "찾지 못한 항목은 빈 문자열로 두세요. 설명은 쓰지 마세요.\n" +
+    (lines.length
+      ? "앞 대화는 참고만 하세요. 값은 마지막 문장을 기준으로 채웁니다.\n" +
+        "'거기' 같은 말이 가리키는 곳은 앞 대화에서 찾으세요.\n" +
+        "앞 대화:\n" + lines.join("\n") + "\n"
+      : "") +
     "항목: " + names.join(", ") + "\n" +
     "문장: " + text;
 
@@ -82,7 +107,14 @@ module.exports = async function handler(req, res) {
       out[n] = (v === undefined || v === null) ? "" : String(v).trim();
     });
 
-    res.status(200).json({ got: out, raw: raw.trim().slice(0, 400), model: model });
+    // window 는 계측 화면에서 "모델이 실제로 본 것" 으로 띄웁니다.
+    res.status(200).json({
+      got: out,
+      raw: raw.trim().slice(0, 400),
+      model: model,
+      window: lines,
+      turns: history.length
+    });
   } catch (e) {
     res.status(500).json({ error: String(e && e.message ? e.message : e).slice(0, 200) });
   }
