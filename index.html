@@ -359,6 +359,12 @@ tr.editing{background:rgba(204,120,92,.10)}
           <button type="button" class="chip" data-hist="3">3턴</button>
           <span class="labbar__note" id="lab-hist-note"></span>
         </div>
+        <div class="labbar" id="lab-memo" hidden>
+          <span>메모판 내용 넘기기</span>
+          <button type="button" class="chip" data-memo="0">안 넘김</button>
+          <button type="button" class="chip" data-memo="1">넘김</button>
+          <span class="labbar__note" id="lab-memo-note"></span>
+        </div>
         <div class="chat__quick" id="chat-quick" hidden></div>
         <div class="chat__bar">
           <input id="chat-input" type="text" autocomplete="off"
@@ -1174,6 +1180,9 @@ async function logout(){
 // 조절기로 바꿔도 settings.py 는 그대로입니다. 제출은 settings.py 기준입니다.
 const HIST_CFG = (SLOTS && SLOTS.history_turns) || 2;
 let   HIST     = HIST_CFG;
+// 메모판을 모델에게 같이 넘길지. 기본은 안 넘김입니다.
+// 넘기면 창에서 밀린 칸도 봇이 보게 되어 밀림이 사라집니다.
+let   SEND_MEMO = false;
 const STYLE = (SLOTS && SLOTS.ask_style) || "one_by_one";
 const QUESTION = {};
 // 갈래에 따라 칸이 늘어나므로 처음부터 모든 칸의 질문을 채워 둡니다.
@@ -1252,14 +1261,15 @@ const LLM_CHOICES = {
 };
 let ENGINE = "";        // 실제로 무엇이 뽑았는지 - llm 인지 rule 인지
 let LAST_RAW = "";
-let LAST_WINDOW = [];   // 모델이 실제로 본 줄들. 창 밖은 여기 없습니다.      // 모델이 그대로 뱉은 것. 실습 화면에서 보여 줍니다.
+let LAST_WINDOW = [];   // 모델이 실제로 본 줄들. 창 밖은 여기 없습니다.
+let MEMO_SENT = 0;      // 이번에 같이 넘긴 메모판 칸 수      // 모델이 그대로 뱉은 것. 실습 화면에서 보여 줍니다.
 
-async function extractLLM(text, history){
+async function extractLLM(text, history, memo){
   if (!LLM_NAMES.length) return null;
   const r = await fetch("/api/extract", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: text, names: LLM_NAMES, history: history || [], choices: LLM_CHOICES })
+    body: JSON.stringify({ text: text, names: LLM_NAMES, history: history || [], choices: LLM_CHOICES, memo: memo || null })
   });
   if (!r.ok) throw new Error("HTTP " + r.status);
   const data = await r.json();
@@ -1505,7 +1515,8 @@ function labHeader(box, ever){
     "  ·  " + eng + "  ·  ASK_STYLE=" + STYLE + "  ·  HISTORY_TURNS=" + HIST + "\n" + line;
   if (ENGINE === "llm"){
     // 모델이 실제로 본 줄입니다. 위의 "밀림" 표시가 창 밖에 있는 것이고요.
-    out += "\n창 " + HIST + "턴 · " + LAST_WINDOW.length + "줄  " +
+    out += "\n창 " + HIST + "턴 · " + LAST_WINDOW.length + "줄" +
+      (SEND_MEMO ? " · 메모판 " + MEMO_SENT + "칸 넘김" : " · 메모판 안 넘김") + "  " +
       (LAST_WINDOW.length ? esc(LAST_WINDOW.join("  |  ")) : "(빈 창 · 방금 친 말만)");
     if (LAST_RAW) out += "\n모델 원문 " + esc(LAST_RAW);
     out += "\n";
@@ -1541,12 +1552,26 @@ async function chatSend(){
   const win = (HIST > 0 ? turns.slice(-HIST) : []).map(function(t){
     return { user: t.me, bot: t.bot || "" };
   });
+  // 메모판. 창과 상관없이 지금까지 쌓인 칸입니다.
+  // 토글이 꺼져 있으면 안 보냅니다. 그때 창 밖 칸이 밀리는 것이 보입니다.
+  let memo = null;
+  if (SEND_MEMO){
+    const soFar = chatSlots().ever;
+    memo = {};
+    Object.keys(SLOT_KEY).forEach(function(n){
+      const k = SLOT_KEY[n];
+      if (soFar[k]) memo[n] = soFar[k];
+    });
+    if (!Object.keys(memo).length) memo = null;
+  }
+  MEMO_SENT = memo ? Object.keys(memo).length : 0;
+
   let got = null;
   try {
     // 원문을 그대로 넘깁니다. 대명사를 손으로 치환해 주면 창이 일을 안 하게 됩니다.
     // "거기" 를 창으로 푸는지 못 푸는지가 이 실습에서 볼 것입니다.
     // 예전처럼 돌리려면 text 를 src 로 되돌리세요.
-    got = await extractLLM(text, win);
+    got = await extractLLM(text, win, memo);
     if (got) ENGINE = "llm";
   } catch (e) {
     console.warn("LLM 추출 실패, 규칙으로 대신합니다:", e.message);
@@ -1618,6 +1643,22 @@ async function chatSend(){
   // 말은 했는데 2턴 창 밖으로 밀려난 칸. 요약판에서 따로 보여 줍니다.
   forgot = {};
   ALL_ASK.forEach(function(k){ if (ever[k] && !box[k]) forgot[k] = ever[k]; });
+
+  // 조건도 창에서 모읍니다. 그래서 조건도 밀립니다.
+  // 다른 칸과 달리 조건은 요약판에 자리가 없어 조용히 사라집니다.
+  // 후보가 갑자기 늘어난 이유를 알 수 있게 말로 알려 줍니다.
+  const everFilters = [];
+  turns.forEach(function(x){
+    (x.got.filters_on || []).forEach(function(f){
+      if (everFilters.indexOf(f) < 0) everFilters.push(f);
+    });
+    (x.got.filters_off || []).forEach(function(f){
+      const i = everFilters.indexOf(f); if (i >= 0) everFilters.splice(i, 1);
+    });
+  });
+  const lostFilters = everFilters.filter(function(f){
+    return st.filters.indexOf(f) < 0;
+  });
 
   // 갈래가 정해지면 그 갈래의 칸만 묻습니다. 폼과 같은 규칙입니다.
   if (box.place_domain) ASK = askFor(box.place_domain);
@@ -1699,19 +1740,19 @@ async function chatSend(){
       // 아직 장소를 못 고른 동안만 후보 수를 세어 줍니다.
       const cand = matching();
       const w = [];
+      // "상관없음" 은 조건을 안 걸었다는 뜻입니다. 읽어 줄 것이 없습니다.
       if (box.place_domain) w.push(box.place_domain === "관광" ? "관광지" : box.place_domain);
-      if (box.place_type)   w.push(box.place_type);
-      if (box.place_price)  w.push(box.place_price);
-      if (box.place_area)   w.push(box.place_area);
+      if (box.place_type  && box.place_type  !== ANY) w.push(box.place_type);
+      if (box.place_price && box.place_price !== ANY) w.push(box.place_price);
+      if (box.place_area  && box.place_area  !== ANY) w.push(box.place_area);
       st.filters.forEach(function(f){
         w.push(f.replace(/\s*유무$/, "").replace(/\s*가능$/, "") + " 있는 곳");
       });
       const tail = w.join(" · ");
-      ack.push(cand.length
-        ? (tail ? tail + josa(tail) + " " : "") + cand.length + "곳이 있어요."
-        : "그 조건에는 맞는 곳이 없어요.");
-      if (cand.length && cand.length <= 6)
-        ack.push(cand.map(function(x){ return x.name; }).join(" · "));
+      // 0곳일 때는 되짚지 않습니다. 바로 뒤 질문이 같은 말을 더 자세히 합니다.
+      // 후보 목록도 질문 쪽에서 보여 주므로 여기서는 수만 말합니다.
+      if (cand.length)
+        ack.push((tail ? tail + josa(tail) + " " : "") + cand.length + "곳이 있어요.");
     }
     if (got.taxi_from) ack.push(got.taxi_from + "에서 타시는군요.");
     if (got.taxi_to)   ack.push(got.taxi_to + "에서 내리시고요.");
@@ -1719,6 +1760,13 @@ async function chatSend(){
     if (got.taxi_class) ack.push(got.taxi_class === ANY
       ? "택시 종류는 상관없으시고요." : got.taxi_class + " 택시로요.");
 
+    // 밀려난 조건이 있으면 먼저 알립니다. 후보 수가 왜 늘었는지 여기서 설명됩니다.
+    if (lostFilters.length){
+      const names = lostFilters.map(function(f){
+        return f.replace(/\s*유무$/, "").replace(/\s*가능$/, "");
+      }).join(" · ");
+      ack.unshift(names + " 조건은 " + HIST + "턴 창 밖으로 밀려서 지금은 안 걸려 있어요.");
+    }
     let lead = ack.length ? ack.join("\n") + "\n\n" : "";
     if (!ack.length && turns.length > 1) lead = "그 말씀은 잘 못 알아들었어요.\n\n";
 
@@ -1875,6 +1923,27 @@ if (LAB){
     chatReset();       // 폭이 바뀌면 처음부터. 섞이면 측정이 무의미해집니다
   });
   paintHist();
+
+  // 메모판 내용 넘기기. 창 폭과 같은 이유로 바꾸면 판을 새로 깝니다.
+  const mb = $("lab-memo");
+  mb.hidden = false;
+  const paintMemo = function(){
+    Array.prototype.forEach.call(mb.querySelectorAll("[data-memo]"), function(b){
+      b.setAttribute("aria-pressed",
+        (b.getAttribute("data-memo") === "1") === SEND_MEMO ? "true" : "false");
+    });
+    $("lab-memo-note").textContent = SEND_MEMO
+      ? "창 밖 칸도 봇에게 같이 넘깁니다. 밀림이 사라집니다."
+      : "창 밖 칸은 봇이 못 봅니다.";
+  };
+  mb.addEventListener("click", function(ev){
+    const b = ev.target.closest("[data-memo]");
+    if (!b) return;
+    SEND_MEMO = (b.getAttribute("data-memo") === "1");
+    paintMemo();
+    chatReset();
+  });
+  paintMemo();
 }
 
 // 링크 주소. 배포에서는 /flow · /test, 내 컴퓨터 파일에서는 파일 이름으로 갑니다.

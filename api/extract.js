@@ -52,6 +52,10 @@ module.exports = async function handler(req, res) {
   // 항목별로 고를 수 있는 값. 브라우저가 장소 사전과 settings.py 에서 뽑아 보냅니다.
   // 없으면 예전처럼 이름만 보냅니다.
   const choices = (body && body.choices && typeof body.choices === "object") ? body.choices : {};
+
+  // 메모판. 창과 상관없이 지금까지 쌓인 칸입니다.
+  // 브라우저의 토글이 꺼져 있으면 안 옵니다. 그때는 창 밖 칸을 모델이 못 봅니다.
+  const memo = (body && body.memo && typeof body.memo === "object") ? body.memo : null;
   const lines = [];
   history.forEach(function (t) {
     if (!t) return;
@@ -72,6 +76,14 @@ module.exports = async function handler(req, res) {
     else if (typeof c === "string" && c.trim()) guide.push("- " + n + " : " + c.trim());
   });
 
+  const memoLines = [];
+  if (memo){
+    names.forEach(function (n) {
+      const v = memo[n];
+      if (v) memoLines.push("- " + n + " : " + String(v).slice(0, 100));
+    });
+  }
+
   const prompt =
     "다음 문장에서 아래 항목을 찾아 JSON 으로만 답하세요.\n" +
     "찾지 못한 항목은 빈 문자열로 두세요. 설명은 쓰지 마세요.\n" +
@@ -79,6 +91,10 @@ module.exports = async function handler(req, res) {
       ? "항목별로 쓸 수 있는 값입니다. 목록이 있는 항목은 그 안의 값을 그대로 적으세요.\n" +
         "비슷한 말을 들으면 목록의 표현으로 바꿔 적고, 해당하는 것이 없으면 비워 두세요.\n" +
         guide.join("\n") + "\n"
+      : "") +
+    (memoLines.length
+      ? "이미 정해진 값입니다. 이번 문장이 뒤집지 않는 항목은 이 값을 그대로 두세요.\n" +
+        "메모판:\n" + memoLines.join("\n") + "\n"
       : "") +
     (lines.length
       ? "앞 대화는 참고만 하세요. 값은 마지막 문장을 기준으로 채웁니다.\n" +
@@ -131,7 +147,8 @@ module.exports = async function handler(req, res) {
       raw: raw.trim().slice(0, 400),
       model: model,
       window: lines,
-      turns: history.length
+      turns: history.length,
+      memo: memoLines.length
     });
   } catch (e) {
     res.status(500).json({ error: String(e && e.message ? e.message : e).slice(0, 200) });
