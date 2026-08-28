@@ -1495,7 +1495,17 @@ async function chatSend(){
     console.warn("LLM 추출 실패, 규칙으로 대신합니다:", e.message);
     got = null;
   }
-  if (!got){ got = pick(src); ENGINE = "rule"; }
+  if (!got){
+    got = pick(src); ENGINE = "rule";
+  } else {
+    // 조건(헬스장·조식 같은 것)은 ASK_SLOTS 에 없습니다. 묻는 칸이 아니라
+    // 후보를 좁히는 장치라서요. 그래서 모델에게 보내는 항목 목록에도 없고,
+    // 모델이 아무리 잘 뽑아도 조건은 안 나옵니다.
+    // LLM 이 성공했을 때도 조건만 규칙으로 한 번 더 훑습니다.
+    const f = pick(src);
+    if (f.filters_on)  got.filters_on  = f.filters_on;
+    if (f.filters_off) got.filters_off = f.filters_off;
+  }
   // 방금 되물은 칸에 "네" 라고만 답하면 그 칸을 장소 이름으로 채웁니다.
   if ((lastAsked === "taxi_to" || lastAsked === "taxi_from") &&
       /^(네|예|응|어|그래|맞아|바꿔|바꿔줘|그렇게)/.test(text.trim()) &&
