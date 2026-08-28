@@ -1880,6 +1880,17 @@ async function chatSend(){
 
 function chatReset(){
   turns = []; lastAsked = "";
+  // 대화만 비우고 칸을 남기면 슬롯 보드에 옛 값이 그대로 뜹니다.
+  // 봇은 처음부터인데 화면은 아니라서 무엇이 실제 상태인지 알 수 없습니다.
+  // 창 폭이나 메모판을 바꿀 때도 이 함수를 부르므로 여기서 같이 비웁니다.
+  forgot = {};
+  ALL_ASK.forEach(function(k){ BOT_STATE[k] = ""; });
+  BOT_STATE.place_filters = [];
+  BOT_STATE.taxi_link = "none";
+  if (state === BOT_STATE){
+    ASK = askFor("");
+    setupDomain();          // 갈래 앞의 칸들을 다시 감춥니다
+  }
   $("chat-log").innerHTML = "";
   $("chat-input").placeholder = HINT.place_domain;
   bubble("bot", esc("안녕하세요. 택시까지 한 번에 잡아 드릴게요.\n먼저 어디를 찾으시나요?  관광지 · 숙소 · 식당 중에서요.\n\n한 번에 몰아 말씀하셔도 됩니다.  예) 헬스장 있는 숙소요"));
