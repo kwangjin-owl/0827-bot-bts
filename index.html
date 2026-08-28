@@ -1032,7 +1032,8 @@ ALL_ASK.forEach(function(k){ QUESTION[k] = ASK_PROMPT[k]; });
 if (SLOTS && SLOTS.ask){
   SLOTS.ask.forEach(function(p){
     const k = SLOT_KEY[p[0]];
-    if (k && p[1]) QUESTION[k] = p[1];
+    // 문구가 너무 짧으면 settings.py 를 안 채운 것으로 보고 기본 질문을 씁니다.
+    if (k && p[1] && String(p[1]).trim().length > 3) QUESTION[k] = p[1];
   });
 }
 
@@ -1064,6 +1065,44 @@ function askText(k){
   }
   if (k === "taxi_class") return "택시 종류는요?  고급 · 에코 · 개인 · 상관없음 중에서요.";
   return QUESTION[k];
+}
+
+// ---------- LLM 추출 ----------
+// app.py 와 같은 모델·같은 프롬프트를 씁니다. 키는 서버(api/extract.js)에만 있습니다.
+// settings.py 의 ASK_SLOTS 이름을 그대로 모델에게 보내므로,
+// settings.py 를 고치면 모델이 뽑는 항목도 같이 바뀝니다.
+const LLM_NAMES = (SLOTS && SLOTS.ask) ? SLOTS.ask.map(function(p){ return p[0]; }) : [];
+let ENGINE = "";        // 실제로 무엇이 뽑았는지 - llm 인지 rule 인지
+let LAST_RAW = "";      // 모델이 그대로 뱉은 것. 실습 화면에서 보여 줍니다.
+
+async function extractLLM(text){
+  if (!LLM_NAMES.length) return null;
+  const r = await fetch("/api/extract", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: text, names: LLM_NAMES })
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const data = await r.json();
+  if (data.error) throw new Error(data.error);
+  LAST_RAW = data.raw || "";
+  // 모델이 준 한글 항목 이름을 웹 내부 이름으로 바꿉니다.
+  const got = {};
+  Object.keys(data.got || {}).forEach(function(n){
+    const k = SLOT_KEY[n];
+    if (k && data.got[n]) got[k] = data.got[n];
+  });
+  // 장소 이름이 나왔으면 그 장소가 아는 값을 채웁니다. 규칙 쪽과 같게 맞춥니다.
+  if (got.place_name){
+    const p = places.find(function(x){ return x.name === got.place_name; });
+    if (p){
+      got.place_domain = got.place_domain || p.domain;
+      got.place_type   = got.place_type   || p.type;
+      got.place_area   = got.place_area   || p.area;
+      if (p.price) got.place_price = got.place_price || p.price;
+    }
+  }
+  return got;
 }
 
 let turns = [];      // [{me, bot}] 지나간 주고받기
@@ -1266,13 +1305,18 @@ function bubble(cls, htmlStr){
 }
 
 function labHeader(box, ever){
+  // 실습 화면에서는 무엇이 뽑았는지와 모델 원문을 그대로 보여 줍니다.
+  // settings.py 를 고쳤을 때 결과가 어떻게 달라지는지 확인하려면 이게 있어야 합니다.
   const n = ASK.filter(function(k){ return box[k]; }).length;
   const line = ASK.map(function(k){
     if (box[k]) return LABEL[k] + ": " + box[k];
     return LABEL[k] + (ever[k] ? ': <span class="gone">- (범위 밖으로 밀림)</span>' : ": -");
   }).join(" | ");
-  return '<span class="bub__head">채운 칸: ' + n + "/" + ASK.length +
-         "  (ASK_STYLE=" + STYLE + ", HISTORY_TURNS=" + HIST + ")\n" + line + "</span>";
+  const eng = ENGINE === "llm" ? "LLM" : (ENGINE === "rule" ? "규칙(대체)" : "-");
+  let out = '<span class="bub__head">채운 칸: ' + n + "/" + ASK.length +
+    "  ·  " + eng + "  ·  ASK_STYLE=" + STYLE + "  ·  HISTORY_TURNS=" + HIST + "\n" + line;
+  if (ENGINE === "llm" && LAST_RAW) out += "\n모델 원문 " + esc(LAST_RAW) + "\n";
+  return out + "</span>";
 }
 
 async function chatSend(){
@@ -1295,7 +1339,17 @@ async function chatSend(){
   // "거기서 출발할게요" 처럼 대명사로 가리키면 지금 장소 이름으로 바꿔 놓고 읽습니다.
   let src = text;
   if (prevName) src = src.replace(/거기|여기|그곳|그 곳|이곳|이 곳/g, prevName);
-  let got = pick(src);
+  // LLM 이 먼저 뽑고, 못 부르면 규칙으로 대신합니다.
+  // 발표 중 API 가 죽어도 시연이 멈추지 않게 하려는 것입니다.
+  let got = null;
+  try {
+    got = await extractLLM(src);
+    if (got) ENGINE = "llm";
+  } catch (e) {
+    console.warn("LLM 추출 실패, 규칙으로 대신합니다:", e.message);
+    got = null;
+  }
+  if (!got){ got = pick(src); ENGINE = "rule"; }
   // 방금 되물은 칸에 "네" 라고만 답하면 그 칸을 장소 이름으로 채웁니다.
   if ((lastAsked === "taxi_to" || lastAsked === "taxi_from") &&
       /^(네|예|응|어|그래|맞아|바꿔|바꿔줘|그렇게)/.test(text.trim()) &&
@@ -1550,7 +1604,6 @@ if (LAB){
   } else {
     bits.push("settings.py 없음 · 웹 기본 " + ASK.length + "칸");
   }
-  if (UNKNOWN.length) bits.push("모르는 칸: " + UNKNOWN.join(", "));
   $("bot-cfg").textContent = bits.join(" · ");
   $("bot-cfg").hidden = false;
 }

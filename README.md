@@ -30,7 +30,6 @@ https://0827-bot-bts.vercel.app/test    실습 화면 — 슬롯 현황 · 변�
 | `build.js` | 버셀이 배포할 때 `config.js` 를 만듭니다 |
 | `vercel.json` | `/test` 를 실습 화면으로 연결합니다 |
 | `scenarios.md` | 수정 시나리오 9개와 채점표 |
-| `.env.example` | 열쇠 양식 |
 
 저장소에 **올라가지 않는** 파일 둘: `.env`, `config.js`. 둘 다 `.gitignore` 가 막습니다.
 
@@ -73,7 +72,10 @@ Supabase → SQL Editor → `schema.sql` 붙여넣고 Run.
 **2. 열쇠 넣기**
 
 ```
-copy .env.example .env
+# .env 파일을 직접 만들고 아래 세 줄을 채웁니다
+# SUPABASE_URL=...
+# SUPABASE_ANON_KEY=...
+# GEMINI_API_KEY=...
 ```
 
 `.env` 를 열어 채웁니다. 값은 Supabase → Settings → API Keys 에 있습니다.

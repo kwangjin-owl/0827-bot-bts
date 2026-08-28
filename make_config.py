@@ -115,10 +115,14 @@ def main():
 
     if not os.path.exists(ENV_PATH):
         print()
-        print(".env 가 없습니다.")
-        print("  [ Windows ]  copy .env.example .env")
-        print("  [ Mac ]      cp .env.example .env")
-        print("그 다음 값을 채우고 다시 돌리세요.")
+        print(".env 가 없습니다.  이 폴더에 .env 파일을 만들고 아래 세 줄을 채우세요.")
+        print()
+        print("  SUPABASE_URL=https://내프로젝트.supabase.co")
+        print("  SUPABASE_ANON_KEY=여기에_키")
+        print("  GEMINI_API_KEY=여기에_키")
+        print()
+        print("앞의 둘은 웹이 쓰고, GEMINI_API_KEY 는 터미널 봇이 씁니다.")
+        print("웹 챗봇의 키는 버셀 Environment Variables 에 따로 넣습니다.")
         return 1
 
     env = read_env(ENV_PATH)
