@@ -48,6 +48,10 @@ module.exports = async function handler(req, res) {
   // 창. 브라우저가 잘라서 보낸 것을 그대로 씁니다. 여기서 더 자르지 않습니다.
   // 몇 턴을 넘길지는 settings.py 의 HISTORY_TURNS 가 정합니다.
   const history = (body && Array.isArray(body.history)) ? body.history.slice(-8) : [];
+
+  // 항목별로 고를 수 있는 값. 브라우저가 장소 사전과 settings.py 에서 뽑아 보냅니다.
+  // 없으면 예전처럼 이름만 보냅니다.
+  const choices = (body && body.choices && typeof body.choices === "object") ? body.choices : {};
   const lines = [];
   history.forEach(function (t) {
     if (!t) return;
@@ -59,9 +63,23 @@ module.exports = async function handler(req, res) {
 
   // app.py 의 프롬프트에 앞 대화 자리를 더했습니다.
   // 창이 비어 있으면 그 자리를 통째로 빼서, 예전과 같은 문장이 나갑니다.
+  // 고를 값을 알려 줍니다. 이게 없으면 모델이 "장소 갈래" 를 비우고
+  // "장소 종류" 에 관광지를 넣거나, 지역을 "서울 남쪽" 대신 "서울" 로 뽑습니다.
+  const guide = [];
+  names.forEach(function (n) {
+    const c = choices[n];
+    if (Array.isArray(c) && c.length) guide.push("- " + n + " : " + c.join(" / "));
+    else if (typeof c === "string" && c.trim()) guide.push("- " + n + " : " + c.trim());
+  });
+
   const prompt =
     "다음 문장에서 아래 항목을 찾아 JSON 으로만 답하세요.\n" +
     "찾지 못한 항목은 빈 문자열로 두세요. 설명은 쓰지 마세요.\n" +
+    (guide.length
+      ? "항목별로 쓸 수 있는 값입니다. 목록이 있는 항목은 그 안의 값을 그대로 적으세요.\n" +
+        "비슷한 말을 들으면 목록의 표현으로 바꿔 적고, 해당하는 것이 없으면 비워 두세요.\n" +
+        guide.join("\n") + "\n"
+      : "") +
     (lines.length
       ? "앞 대화는 참고만 하세요. 값은 마지막 문장을 기준으로 채웁니다.\n" +
         "'거기' 같은 말이 가리키는 곳은 앞 대화에서 찾으세요.\n" +

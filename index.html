@@ -847,6 +847,10 @@ function render(){
     + slotRow("taxi_depart_at", v.taxi_depart_at, false)
     + slotRow("taxi_class", v.taxi_class, false);
 
+  // 계측 화면의 묶음 제목은 지금 갈래를 따라갑니다.
+  // 한 번 박아 두면 숙소를 골라도 "관광" 이라고 떠 있습니다.
+  if (LAB) $("lbl-place").textContent = state.place_domain || "장소";
+
   // 사람이 안 건드렸는데 바뀐 줄을 한 번 밝혔다가 끕니다.
   Object.keys(v).forEach(function(k){
     if (!isAuto(k)) return;
@@ -1111,6 +1115,25 @@ function askText(k){
 // settings.py 의 ASK_SLOTS 이름을 그대로 모델에게 보내므로,
 // settings.py 를 고치면 모델이 뽑는 항목도 같이 바뀝니다.
 const LLM_NAMES = (SLOTS && SLOTS.ask) ? SLOTS.ask.map(function(p){ return p[0]; }) : [];
+
+// 항목별로 고를 수 있는 값. 이름만 보내면 모델이 알아서 지어냅니다.
+//   "장소 갈래" 를 비우고 "장소 종류" 에 관광지를 넣거나,
+//   지역을 "서울 남쪽" 이 아니라 "서울" 로 뽑는 일이 생깁니다.
+// 닫힌 집합은 목록으로, 형식만 있는 칸은 한 줄 설명으로 보냅니다.
+const ALL_TYPES = [];
+Object.keys(TYPES_BY_DOMAIN).forEach(function(d){
+  TYPES_BY_DOMAIN[d].forEach(function(t){
+    if (ALL_TYPES.indexOf(t) < 0) ALL_TYPES.push(t);
+  });
+});
+const LLM_CHOICES = {
+  "장소 갈래":   DOMAINS,
+  "장소 종류":   ALL_TYPES,
+  "장소 지역":   AREAS,
+  "장소 가격대": PRICES,
+  "택시 종류":   CLASSES,
+  "출발 시간":   "24시간 형식 HH:MM 으로 적으세요. 예 19:10"
+};
 let ENGINE = "";        // 실제로 무엇이 뽑았는지 - llm 인지 rule 인지
 let LAST_RAW = "";
 let LAST_WINDOW = [];   // 모델이 실제로 본 줄들. 창 밖은 여기 없습니다.      // 모델이 그대로 뱉은 것. 실습 화면에서 보여 줍니다.
@@ -1120,7 +1143,7 @@ async function extractLLM(text, history){
   const r = await fetch("/api/extract", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: text, names: LLM_NAMES, history: history || [] })
+    body: JSON.stringify({ text: text, names: LLM_NAMES, history: history || [], choices: LLM_CHOICES })
   });
   if (!r.ok) throw new Error("HTTP " + r.status);
   const data = await r.json();
@@ -1742,7 +1765,6 @@ if (LAB){
   $("config-toggle").hidden = false;
   $("counter").hidden = false;
   $("sum-title").textContent = "슬롯 보드";
-  $("lbl-place").textContent = "관광";
   $("lbl-taxi").textContent = "택시";
   Array.prototype.forEach.call(document.querySelectorAll(".lab-col"), function(el){ el.hidden = false; });
 
