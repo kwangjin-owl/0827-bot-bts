@@ -50,6 +50,9 @@ h1{font-family:var(--serif);font-size:44px;font-weight:400;letter-spacing:-.035e
 .config__note code{font-family:var(--mono);font-size:12.5px;background:var(--cream-strong);padding:2px 6px;border-radius:4px;color:var(--body-strong)}
 
 .desk{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px;margin-top:32px;align-items:start}
+/* sticky 는 부모 안에서만 움직입니다. 안쪽 카드에 걸면 부모 높이가 같아서 붙을 여유가 없습니다.
+   격자 항목인 aside 에 걸어야 왼쪽 칼럼이 스크롤되는 동안 따라옵니다. */
+.desk > aside{position:sticky;top:24px;align-self:start;max-height:calc(100vh - 48px);overflow-y:auto}
 
 .step{background:var(--surface-card);border-radius:12px;padding:0 0 32px;margin-bottom:24px}
 .step__head{display:flex;align-items:center;gap:12px;padding:26px 32px 20px}
@@ -107,7 +110,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .btn--onprimary:hover{background:#fff}
 .status{font-size:13.5px;color:var(--muted)}
 
-.board{background:var(--dark);border-radius:12px;position:sticky;top:24px;overflow:hidden}
+.board{background:var(--dark);border-radius:12px;overflow:hidden}
 .board__head{padding:24px 24px 20px;border-bottom:1px solid rgba(250,249,245,.10)}
 .board__title{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--on-dark-soft);margin:0 0 12px}
 .counter{font-family:var(--serif);font-size:34px;font-weight:400;letter-spacing:-.03em;color:var(--on-dark);line-height:1}
@@ -136,7 +139,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .log__item b{font-weight:500;color:var(--on-dark)}
 .log__item .cas{font-family:var(--mono);font-size:10px;color:var(--accent-amber);margin-left:6px}
 
-.done{background:var(--primary);border-radius:12px;padding:28px 24px;color:var(--on-primary);position:sticky;top:24px}
+.done{background:var(--primary);border-radius:12px;padding:28px 24px;color:var(--on-primary)}
 .done__label{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.72);margin:0 0 10px}
 .done__ref{font-family:var(--serif);font-size:32px;font-weight:400;letter-spacing:-.03em;line-height:1;margin-bottom:22px}
 .done__row{display:flex;gap:12px;padding:7px 0;font-size:13.5px;border-top:1px solid rgba(255,255,255,.22)}
@@ -198,7 +201,7 @@ tr.editing{background:rgba(204,120,92,.10)}
 @media (max-width:880px){
   body{padding:0 18px 64px}
   .desk{grid-template-columns:1fr;gap:24px;margin-top:32px}
-  .board,.done{position:static}
+  .desk > aside{position:static;max-height:none;overflow:visible}
   .row2{grid-template-columns:1fr}
   .config__grid{grid-template-columns:1fr}
   .config,.fields{padding-left:22px;padding-right:22px}
