@@ -5,14 +5,18 @@
 
 ```
 https://0827-bot-bts.vercel.app/        예약 화면 — 폼 탭과 챗봇 탭
-https://0827-bot-bts.vercel.app/test    계측 화면 — 슬롯 현황 · 모델 원문 · 창 폭 조절
+https://0827-bot-bts.vercel.app/test    테스트 화면 — 슬롯 현황 · 모델 원문 · 창 폭 조절
+https://0827-bot-bts.vercel.app/flow    흐름도
 ```
 
-로컬에서 `index.html` 을 직접 열 때는 주소 끝에 `?lab=1` 을 붙이면 계측 화면입니다.
+로컬에서 `index.html` 을 직접 열 때는 주소 끝에 `?lab=1` 을 붙이면 테스트 화면입니다.
 
 **웹에 탭이 둘 있습니다.** 폼으로 예약, 챗봇으로 예약. 둘 다 같은 칸을 채우고
 같은 Supabase 테이블에 들어갑니다. 한 화면에서 바로 비교할 수 있습니다.
 둘 다 손님이 쓰는 기능이라 공개 화면에도 나옵니다.
+
+**구글 로그인이 붙어 있습니다.** 로그인하면 자기 예약만 보입니다.
+안 해도 예약은 됩니다. 그때는 익명으로 들어갑니다.
 
 **Gradio 봇은 터미널에서 따로 돕니다.** `app.py` 를 켜면 `127.0.0.1:7860` 에 뜹니다.
 웹 챗봇은 같은 모델·같은 프롬프트·같은 창 제약으로 도는 쌍둥이입니다.
@@ -23,20 +27,26 @@ https://0827-bot-bts.vercel.app/test    계측 화면 — 슬롯 현황 · 모�
 
 | 파일 | 하는 일 |
 |---|---|
-| `index.html` | 웹사이트. 폼 탭과 챗봇 탭. `/test` 에서는 계측 화면이 함께 나옵니다 |
+| `index.html` | 웹사이트. 폼 탭과 챗봇 탭. `/test` 에서는 계측이 함께 나옵니다 |
 | `api/extract.js` | 버셀 서버 함수. Gemini 를 부릅니다. **`GEMINI_API_KEY` 는 여기서만 씁니다** |
+| `test.html` | `/test` 대비용. rewrite 가 먹으면 쓰이지 않습니다 |
+| `flow.html` | 흐름도. `/flow` 에서 열립니다 |
+| `vercel.json` | `/test` 연결과 `cleanUrls` |
 | `app.py` | **Agent Bot.** 터미널에서 로컬로 돕니다. 킷 원본이며 고치지 않습니다 |
 | `bot-requirements.txt` | 봇을 돌릴 때 설치할 것 |
 | `check.py` | 열쇠와 모델이 살아 있는지 확인 |
 | `settings.py` | **묻는 칸 목록.** 봇과 웹이 같이 읽습니다. 여기만 고칩니다 |
-| `schema.sql` | Supabase 테이블 3개와 장소 218곳 |
-| `make_config.py` | 로컬에서 `config.js` 를 만듭니다. 배포에는 안 쓰입니다 |
-| `build.js` | 버셀이 배포할 때 `settings.py` 를 읽어 `config.js` 를 만듭니다 |
-| `vercel.json` | `/test` 를 계측 화면으로 연결합니다 |
-| `flow.html` | 흐름도. `/flow` 에서 열립니다. 계측 화면에서만 링크를 겁니다 |
+| `schema.sql` | Supabase 테이블 3개와 장소 218곳. 처음 한 번만 |
+| `schema_auth.sql` | 로그인 붙일 때 한 번. `user_id` 와 RLS 정책 |
+| `make_config.py` | `.env` 와 `settings.py` 로 `config.js` 를 만듭니다 |
+| `build.js` | 버셀에서 `settings.py` 를 읽어 `config.js` 를 만듭니다 |
 | `scenarios.md` | 수정 시나리오 9개와 채점표 |
 
-저장소에 **올라가지 않는** 파일: `.env`, `config.js`, `slots.json`.
+저장소에 **올라가지 않는** 파일: `.env`, `slots.json`.
+
+`config.js` 는 일부러 올립니다. 들어가는 값이 `SUPABASE_URL` 과 `SUPABASE_ANON_KEY`
+둘뿐이고 anon key 는 어차피 브라우저에 내려가는 값이라 비밀이 아닙니다.
+올려 두면 버셀에 빌드 설정을 걸지 않아도 정적 파일로 그냥 서빙됩니다.
 
 ---
 
@@ -81,7 +91,7 @@ Supabase → SQL Editor → `schema.sql` 붙여넣고 Run.
 
 **2. 열쇠 넣기**
 
-`.env` 파일을 직접 만들고 세 줄을 채웁니다. 값은 Supabase → Settings → API Keys 에 있습니다.
+`.env` 파일을 직접 만들고 세 줄을 채웁니다.
 
 ```
 SUPABASE_URL=https://내프로젝트.supabase.co
@@ -89,20 +99,53 @@ SUPABASE_ANON_KEY=여기에_키
 GEMINI_API_KEY=여기에_키
 ```
 
-`SUPABASE_ANON_KEY` 는 "API Keys" 탭의 Publishable key 나
-"Legacy API Keys" 탭의 anon key 중 아무거나 됩니다.
+`.env` 는 터미널 Gradio 봇과 `make_config.py` 가 읽습니다.
+`GEMINI_API_KEY` 는 **버셀 환경 변수에도 따로** 넣어야 합니다. 배포 항목을 보세요.
 
-**같은 키를 버셀 환경 변수에도 따로 넣어야 합니다.** `.env` 는 저장소에 안 올라가서
-버셀이 못 봅니다. 배포 항목을 보세요.
-
-**3. 로컬 설정 파일 만들기**
+**3. 설정 파일 만들기**
 
 ```
 python make_config.py
 ```
 
-`config.js` 가 생깁니다. `index.html` 을 직접 열 때만 필요합니다.
-배포는 `build.js` 가 알아서 하므로 이 단계가 없어도 됩니다.
+`config.js` 가 생깁니다. 이 파일은 저장소에 같이 올립니다.
+
+---
+
+## 구글 로그인
+
+**1. Google Cloud Console** — OAuth 클라이언트의 **승인된 리디렉션 URI** 에 한 줄 추가합니다.
+
+```
+https://내프로젝트.supabase.co/auth/v1/callback
+```
+
+Supabase 의 Google 설정 화면에 이 주소가 그대로 적혀 있습니다. 거기서 복사하세요.
+
+**2. Supabase** → Authentication → Sign In / Providers → Google
+
+`Enable Sign in with Google` 을 켜고 Client ID 와 Client Secret 을 넣습니다.
+**Secret 은 여기에만 넣습니다.** 저장소에도 브라우저에도 들어가면 안 됩니다.
+
+같은 곳 URL Configuration 에서
+
+```
+Site URL        https://0827-bot-bts.vercel.app
+Redirect URLs   https://0827-bot-bts.vercel.app/**
+```
+
+`/**` 가 있어야 `/test` 에서 눌러도 돌아옵니다.
+
+**3. SQL Editor** 에 `schema_auth.sql` 붙여넣고 Run.
+`booking` 에 `user_id` 가 생기고 정책이 바뀝니다. `schema.sql` 은 다시 돌리지 마세요.
+
+인증은 프로젝트마다 따로입니다. 다른 프로젝트에 켜 둔 것은 여기로 오지 않습니다.
+
+**동작** — 로그인하면 예약에 `user_id` 가 박히고 자기 것만 보입니다.
+안 하면 익명으로 들어가고 익명끼리 보입니다. 막는 것은 화면이 아니라 RLS 정책입니다.
+
+로그인을 켠 이상 이름 · 이메일 · 프로필 사진을 받게 됩니다.
+실제 서비스로 쓰실 거면 개인정보처리방침과 동의 절차가 따로 필요합니다.
 
 ---
 
@@ -110,14 +153,28 @@ python make_config.py
 
 ### 폼과 챗봇 (웹)
 
-위쪽 탭을 누릅니다. 둘 다 같은 칸을 채우고, 다 차면 같은 `booking` 테이블에 들어갑니다.
+위쪽 탭을 누릅니다. 둘 다 같은 칸을 채우고, 다 차면 같은 `booking` 표에 들어갑니다.
 
 작성 중인 값은 탭마다 따로 쥡니다. 같은 시나리오를 폼에 한 번, 챗봇에 한 번 돌려서
 클릭 수와 턴 수를 셀 때 서로 간섭하지 않게 하려는 것입니다.
 
 챗봇은 `api/extract.js` 를 거쳐 Gemini 로 칸을 뽑습니다.
 서버 함수를 못 부르면 규칙 기반으로 대신 돕니다. 발표 중 API 가 죽어도 시연이 멈추지 않습니다.
-계측 화면 말머리에 `LLM` 인지 `규칙(대체)` 인지 찍힙니다.
+테스트 화면 말머리에 `LLM` 인지 `규칙(대체)` 인지 찍힙니다.
+
+**모델에게는 항목 이름과 함께 고를 수 있는 값을 같이 보냅니다.**
+
+```
+- 장소 갈래 : 관광 / 숙소 / 식당
+- 장소 지역 : 서울 중앙 / 서울 북쪽 / 서울 남쪽 / 서울 동쪽 / 서울 서쪽
+- 출발 시간 : 24시간 형식 HH:MM 으로 적으세요. 예 19:10
+```
+
+이게 없으면 모델이 갈래를 비우고 종류에 `관광지` 를 넣거나, 지역을 `서울` 로만 뽑습니다.
+목록은 `settings.py` 와 장소 사전에서 그때그때 만들어서 하드코딩이 아닙니다.
+
+**조건만은 LLM 이 성공해도 규칙으로 한 번 더 훑습니다.**
+조건은 묻는 칸이 아니라 `ASK_SLOTS` 에 없고, 그래서 모델이 뽑을 항목 자체가 없습니다.
 
 ### Gradio 봇 (터미널)
 
@@ -128,24 +185,32 @@ python make_config.py
 `127.0.0.1:7860` 에 뜹니다. 웹 챗봇과 같은 칸, 같은 창 제약으로 돕니다.
 
 차이가 하나 있습니다. 웹은 뽑은 뒤에 장소 사전을 참조해 지역과 종류를 채우고
-대명사와 `말고` 를 후처리합니다. Gradio 는 모델이 준 값을 그대로 씁니다.
+`말고` 같은 말을 후처리합니다. Gradio 는 모델이 준 값을 그대로 씁니다.
 
 ---
 
 ## settings.py 가 유일한 출처입니다
 
 ```
-배포   settings.py  →  build.js       →  config.js  →  index.html
-로컬   settings.py  →  make_config.py →  config.js  →  index.html
+settings.py  →  make_config.py  →  config.js  →  index.html
 ```
 
 `ASK_SLOTS` 에서 줄을 지우면 **봇도 안 묻고 웹에서도 그 입력칸이 사라집니다.**
 
-배포는 `settings.py` 를 고치고 커밋·푸시하면 끝입니다.
-`build.js` 가 `settings.py` 를 직접 읽으므로 중간 단계가 없습니다.
-빌드 로그에 `칸 목록 출처  settings.py` 가 찍히는지 보면 반영됐는지 알 수 있습니다.
+`settings.py` 를 고쳤으면 `python make_config.py` 를 돌리고, 바뀐 `config.js` 도 같이 커밋합니다.
+그 파일은 저장소에 올라가고 버셀은 그대로 서빙합니다.
 
-로컬에서 `index.html` 을 직접 열어 확인할 때만 `python make_config.py` 를 다시 돌립니다.
+`build.js` 도 같은 일을 합니다. 버셀 Build Command 를 `node build.js` 로 두면
+배포할 때 `settings.py` 를 직접 읽어 `config.js` 를 새로 만듭니다.
+그러면 `make_config.py` 없이 커밋만 해도 되지만, 대시보드에서 Override 를 켜야 합니다.
+지금은 그 설정 없이 `config.js` 를 올리는 쪽으로 돌고 있습니다.
+
+반영됐는지는 테스트 화면 슬롯 보드에서 봅니다.
+
+```
+settings.py 연결됨 · one_by_one · 2턴     반영됨
+settings.py 없음 · 웹 기본 8칸            config.js 가 비었거나 안 올라감
+```
 
 ---
 
@@ -161,16 +226,26 @@ python make_config.py
 밀려난 칸은 요약판에 **지운 글씨에 `잊음` 딱지**로 남깁니다.
 빈칸으로 두면 "안 물어본 것"과 구분이 안 되어 고장으로 보이기 때문입니다.
 
-**한 문장에 몰아 말하면 창이 좁아도 그 자리에서 배차까지 갑니다.**
-한 칸씩 주고받으면 밀립니다. 그 실패를 보는 것이 과제입니다. 피하는 것이 아닙니다.
+돌려 본 결과는 이렇습니다.
+
+```
+한 문장에 몰아 말하면   창이 0줄이어도 1턴에 여덟 칸을 채우고 배차까지 감
+한 칸씩 주고받으면      창 2턴은 5턴째까지 버팀
+                       창 1턴은 2턴째부터 밀려서 이미 답한 칸을 다시 물음
+```
+
+**그 실패를 보는 것이 과제입니다. 피하는 것이 아닙니다.**
 
 폼은 이 문제가 없습니다. 상태가 화면에 다 있고 DB 에 남기 때문입니다.
 그 차이를 재는 것이 `scenarios.md` 의 시나리오 9개입니다.
 
-계측 화면 챗봇 탭에 **창 폭 조절기**가 있습니다. `0턴 1턴 2턴 3턴` 을 눌러
+테스트 화면 챗봇 탭에 **창 폭 조절기**가 있습니다. `0턴 1턴 2턴 3턴` 을 눌러
 그 자리에서 바꿔 볼 수 있습니다. `settings.py` 를 덮어쓰는 게 아니라 잠깐 얹어 보는 것이라,
 옆에 `임시 1턴 · settings.py 는 2턴` 처럼 지금 뭘 보고 있는지 표시됩니다.
 폭을 바꾸면 앞 턴이 어느 폭으로 쌓인 건지 알 수 없어지므로 대화를 처음부터 다시 시작합니다.
+
+말머리의 `창 N턴 · M줄` 이 모델에게 실제로 간 줄 수입니다.
+조절기를 눌렀을 때 이 숫자가 따라 움직이면 창이 모델까지 가고 있는 것입니다.
 
 **제출에 쓰는 값은 `settings.py` 입니다.** 조절기는 비교할 때 쓰는 시연 도구입니다.
 
@@ -178,23 +253,33 @@ python make_config.py
 
 ## 배포
 
-버셀 Settings 에서 이렇게 둡니다.
+버셀 환경 변수에 세 개를 넣습니다.
 
-| 항목 | 값 |
-|---|---|
-| Framework Preset | Other |
-| Build Command | `node build.js` (Override 켜기) |
-| Output Directory | `.` (Override 켜기) |
-| Environment Variables | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GEMINI_API_KEY` |
+```
+SUPABASE_URL
+SUPABASE_ANON_KEY
+GEMINI_API_KEY
+```
 
 `GEMINI_API_KEY` 를 빼먹으면 사이트는 뜨지만 챗봇이 계속 `규칙(대체)` 로 돕니다.
-`.env` 에 넣은 것과 **같은 키를 버셀에도 따로** 넣어야 합니다.
+`.env` 에 넣은 것과 **같은 키를 버셀에도 따로** 넣어야 합니다. `.env` 는 저장소에
+안 올라가서 버셀이 못 봅니다.
 
 환경 변수를 나중에 추가했으면 Deployments 에서 Redeploy 를 해야 반영됩니다.
-빌드 로그에 `config.js 를 만들었습니다` 와 `칸 목록 출처  settings.py` 가 찍히면 성공입니다.
 
-`settings.py 를 읽지 못했습니다` 가 찍히면 그 파일에 함수 호출이나 f-string 이
-들어간 것입니다. `build.js` 는 목록과 사전만 읽습니다.
+빌드 설정은 따로 안 건드립니다. `config.js` 를 저장소에 올려 두면 정적 파일로 서빙됩니다.
+`node build.js` 를 쓰실 거면 Build Command 에 넣고 **Override 를 켜야** 합니다.
+Override 가 꺼져 있으면 무엇을 적어도 무시됩니다.
+
+`vercel.json` 은 두 가지를 합니다.
+
+```
+cleanUrls   flow.html 을 /flow 로 서빙합니다
+rewrites    /test 를 index.html 로 잇습니다. 주소는 /test 로 남습니다
+```
+
+rewrite 가 안 먹으면 `cleanUrls` 가 `test.html` 을 대신 내주고,
+그 파일이 `/?lab=1` 로 보냅니다. **주소창을 보면 어느 쪽인지 알 수 있습니다.**
 
 ---
 
@@ -210,20 +295,29 @@ python make_config.py
 
 고칠 때마다 대화를 끝까지 한 번 돌려 보세요. 그게 유일하게 믿을 만한 확인입니다.
 
+배포가 안 바뀌는 것 같으면 순서대로 봅니다.
+
+```
+1  git log --oneline -1  과  origin/main     푸시가 됐나
+2  버셀 Deployments 맨 위                   오늘인가 · Ready 인가
+3  Settings → Git                           Production Branch 가 지금 브랜치와 같은가
+4  좌상단 프로젝트 이름                      다른 프로젝트를 보고 있지 않은가
+```
+
 ---
 
 ## 주의
 
-`schema.sql` 의 정책은 로그인 없는 실습용입니다. 누구나 예약을 읽고 쓸 수 있습니다.
-삭제와 장소 사전 수정은 막아 두었습니다. 발표가 끝나면 프로젝트를 지우거나
-로그인을 붙이세요.
-
 `anon key` 는 비밀이 아닙니다. 브라우저에 내려가는 값이라 사이트를 열면 보입니다.
-`.env` 로 감추는 것은 저장소 이력에 남기지 않으려는 것이지, 배포된 사이트를
-지켜 주지는 않습니다. 데이터를 지키는 것은 RLS 정책입니다.
+데이터를 지키는 것은 RLS 정책입니다.
 
-`GEMINI_API_KEY` 는 진짜 비밀입니다. `api/extract.js` 안에서만 쓰이고
-브라우저로는 나가지 않습니다.
+`GEMINI_API_KEY` 와 Google `Client Secret` 은 진짜 비밀입니다.
+전자는 `api/extract.js` 안에서만, 후자는 Supabase 대시보드 안에서만 쓰입니다.
+둘 다 브라우저로 나가지 않습니다.
+
+`schema_auth.sql` 을 돌린 뒤에도 **익명 예약은 서로에게 보입니다.**
+로그인 없는 실습을 살려 두려고 그렇게 뒀습니다. 실제 서비스라면 그 정책에서
+`user_id is null` 허용을 빼고 로그인을 필수로 만드세요.
 
 데이터에 모순이 하나 있습니다. `프린스 호텔 서울` 은 헬스장이 yes 4번 · no 129번으로
 엇갈립니다. 다수결로 no 를 택해 19곳이 됐습니다. 원본 기준으로는 20곳입니다.

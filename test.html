@@ -4,8 +4,14 @@
 <meta charset="utf-8">
 <title>가는길 · 테스트</title>
 <script>
-// /test 로 들어오면 여기로 옵니다. cleanUrls 가 test.html 을 /test 로 서빙합니다.
-// vercel.json 의 rewrite 에 기대지 않으려고 파일로 뒀습니다. /flow 와 같은 방식입니다.
+// 이 파일은 대비용입니다.
+//
+// 평소에는 vercel.json 의 rewrite 가 /test 를 index 로 이어 주므로
+// 여기까지 오지 않습니다. 그때는 주소가 /test 그대로 남습니다.
+//
+// rewrite 가 안 먹으면 cleanUrls 가 이 파일을 /test 로 내주고, 아래 줄이 돕니다.
+// 이 경우에만 주소가 /?lab=1 로 바뀝니다. 주소를 보면 어느 쪽인지 알 수 있습니다.
+//
 // replace 를 쓰는 이유 - 뒤로 가기를 눌렀을 때 여기로 되돌아오지 않게 합니다.
 location.replace("/?lab=1");
 </script>
