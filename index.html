@@ -43,6 +43,7 @@ h1{font-family:var(--serif);font-size:44px;font-weight:400;letter-spacing:-.035e
 
 .linkbtn{font-family:var(--sans);font-size:14px;color:var(--body);background:none;border:none;border-bottom:1px solid var(--cream-strong);padding:2px 0;cursor:pointer;transition:color .15s,border-color .15s}
 .linkbtn:hover{color:var(--primary);border-color:var(--primary)}
+a.linkbtn{text-decoration:none;display:inline-block}
 
 .config{background:var(--surface-soft);border:1px solid var(--hairline);border-radius:12px;padding:28px 32px;margin-top:24px}
 .config__grid{display:grid;grid-template-columns:1fr 1fr auto;gap:16px;align-items:end}
@@ -225,6 +226,7 @@ tr.editing{background:rgba(204,120,92,.10)}
   <div class="masthead__meta" id="lab-meta" hidden>
     <span class="badge" id="mode-badge">로컬 모드</span>
     <button class="linkbtn" id="config-toggle" type="button">Supabase 연결</button>
+    <a class="linkbtn" id="flow-link" href="flow.html">흐름도 ↗</a>
   </div>
 </header>
 
@@ -1724,6 +1726,9 @@ if (LAB){
 if (LAB){
   document.title = "가는길 · 실습 모드";
   $("lab-meta").hidden = false;
+  // 배포에서는 /flow, 내 컴퓨터 파일에서는 flow.html.
+  // /test/ 처럼 빗금이 붙으면 상대 경로가 어긋나므로 갈라 둡니다.
+  $("flow-link").href = (location.protocol === "file:") ? "flow.html" : "/flow";
   $("counter").hidden = false;
   $("sum-title").textContent = "슬롯 보드";
   $("lbl-place").textContent = "관광";
