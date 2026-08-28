@@ -175,7 +175,11 @@ tr.editing{background:rgba(204,120,92,.10)}
 /* 높이를 고정합니다. min~max 로 두면 말풍선이 쌓일 때마다 상자가 커지고,
    그때마다 아래 버튼과 입력칸이 밀려 내려가 화면이 튑니다.
    clamp 는 화면 크기에 따라 정해지고 내용에는 반응하지 않습니다. */
-.chat__log{height:clamp(360px,55vh,560px);overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-right:6px}
+/* scrollbar-gutter - 스크롤바 자리를 처음부터 비워 둡니다.
+   안 그러면 스크롤이 생기는 순간 안쪽 너비가 15px 쯤 줄고,
+   말풍선이 다시 줄바꿈되면서 글자가 통째로 밀립니다. */
+.chat__log{height:clamp(360px,55vh,560px);overflow-y:auto;scrollbar-gutter:stable;
+  display:flex;flex-direction:column;gap:14px;padding-right:6px}
 .bub{max-width:76%;padding:13px 17px;border-radius:14px;font-size:14.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
 .bub--me{align-self:flex-end;background:var(--ink);color:var(--on-dark);border-bottom-right-radius:5px}
 .bub--bot{align-self:flex-start;background:var(--canvas);color:var(--body);border-bottom-left-radius:5px}
