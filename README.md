@@ -271,15 +271,20 @@ GEMINI_API_KEY
 `node build.js` 를 쓰실 거면 Build Command 에 넣고 **Override 를 켜야** 합니다.
 Override 가 꺼져 있으면 무엇을 적어도 무시됩니다.
 
-`vercel.json` 은 두 가지를 합니다.
+`vercel.json` 이 짧은 주소를 만듭니다.
 
 ```
-cleanUrls   flow.html 을 /flow 로 서빙합니다
-rewrites    /test 를 index.html 로 잇습니다. 주소는 /test 로 남습니다
+/test  →  index.html     테스트 화면
+/flow  →  flow.html      흐름도
 ```
 
-rewrite 가 안 먹으면 `cleanUrls` 가 `test.html` 을 대신 내주고,
-그 파일이 `/?lab=1` 로 보냅니다. **주소창을 보면 어느 쪽인지 알 수 있습니다.**
+**rewrite 라서 주소가 그대로 남습니다.** 리다이렉트가 아닙니다.
+
+`cleanUrls` 는 일부러 껐습니다. 켜 두면 버셀이 `/test` 요청에서 `test.html` 을
+먼저 찾아 버리고, 파일이 잡히면 rewrite 는 아예 실행되지 않습니다.
+버셀의 처리 순서가 `redirects → 파일 찾기 → rewrites` 이기 때문입니다.
+
+`test.html` 은 남겨 뒀습니다. `/test.html` 로 열면 `/?lab=1` 로 보냅니다.
 
 ---
 
