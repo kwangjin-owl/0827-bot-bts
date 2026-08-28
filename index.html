@@ -1569,6 +1569,18 @@ async function chatSend(){
       const k = SLOT_KEY[n];
       if (soFar[k]) memo[n] = soFar[k];
     });
+    // 조건도 메모판에 담습니다. 아홉 칸만 담으면 조건은 그대로 밀립니다.
+    // 조건은 묻는 칸이 아니라 SLOT_KEY 에 없어서 위 반복문이 못 담습니다.
+    const memoF = [];
+    turns.forEach(function(x){
+      (x.got.filters_on || []).forEach(function(f){
+        if (memoF.indexOf(f) < 0) memoF.push(f);
+      });
+      (x.got.filters_off || []).forEach(function(f){
+        const i = memoF.indexOf(f); if (i >= 0) memoF.splice(i, 1);
+      });
+    });
+    if (memoF.length) memo["조건"] = memoF.join(", ");
     if (!Object.keys(memo).length) memo = null;
   }
   MEMO_SENT = memo ? Object.keys(memo).length : 0;
@@ -1666,6 +1678,15 @@ async function chatSend(){
   const lostFilters = everFilters.filter(function(f){
     return st.filters.indexOf(f) < 0;
   });
+  // 메모판을 넘기면 조건도 같이 넘어가므로 되살립니다.
+  // 이것이 토글을 켰을 때와 껐을 때가 갈리는 자리입니다.
+  if (SEND_MEMO && lostFilters.length){
+    lostFilters.forEach(function(f){
+      if (st.filters.indexOf(f) < 0) st.filters.push(f);
+    });
+    lostFilters.length = 0;
+    // 화면은 아래에서 어차피 한 번 더 그립니다. 여기서 그리면 옛 값으로 한 번 깜빡입니다.
+  }
 
   // 갈래가 정해지면 그 갈래의 칸만 묻습니다. 폼과 같은 규칙입니다.
   if (box.place_domain) ASK = askFor(box.place_domain);
@@ -1779,7 +1800,14 @@ async function chatSend(){
       LAB_LOST = names + " 조건이 창 " + HIST + "턴 밖으로 밀려 지금은 안 걸려 있습니다";
     }
     let lead = ack.length ? ack.join("\n") + "\n\n" : "";
-    if (!ack.length && turns.length > 1) lead = "그 말씀은 잘 못 알아들었어요.\n\n";
+    // 뽑은 것이 하나도 없을 때만 못 알아들었다고 합니다.
+    // 0곳이라 되짚을 말이 없는 것과는 다릅니다.
+    const heardSomething = Object.keys(got).some(function(k){
+      const v = got[k];
+      return Array.isArray(v) ? v.length : !!v;
+    });
+    if (!ack.length && !heardSomething && turns.length > 1)
+      lead = "그 말씀은 잘 못 알아들었어요.\n\n";
 
     // 갈래를 막 정했으면 조건이 선택이라는 걸 한 번만 알려 줍니다.
     if (box.place_domain && box.place_domain !== prevDomain && !st.filters.length && !box.place_name){

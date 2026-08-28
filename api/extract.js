@@ -78,7 +78,14 @@ module.exports = async function handler(req, res) {
 
   const memoLines = [];
   if (memo){
+    // 묻는 칸을 먼저, 그다음 그 밖의 것(조건 같은 것)을 담습니다.
+    // 조건은 묻는 칸이 아니라 names 에 없어서 따로 챙겨야 합니다.
     names.forEach(function (n) {
+      const v = memo[n];
+      if (v) memoLines.push("- " + n + " : " + String(v).slice(0, 100));
+    });
+    Object.keys(memo).forEach(function (n) {
+      if (names.indexOf(n) >= 0) return;
       const v = memo[n];
       if (v) memoLines.push("- " + n + " : " + String(v).slice(0, 100));
     });
