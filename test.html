@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>가는길 · 테스트</title>
+<script>
+// /test 로 들어오면 여기로 옵니다. cleanUrls 가 test.html 을 /test 로 서빙합니다.
+// vercel.json 의 rewrite 에 기대지 않으려고 파일로 뒀습니다. /flow 와 같은 방식입니다.
+// replace 를 쓰는 이유 - 뒤로 가기를 눌렀을 때 여기로 되돌아오지 않게 합니다.
+location.replace("/?lab=1");
+</script>
+</head>
+<body>
+<noscript><a href="/?lab=1">테스트 화면으로 이동</a></noscript>
+</body>
+</html>
