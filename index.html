@@ -226,6 +226,9 @@ tr.editing{background:rgba(204,120,92,.10)}
   <div class="masthead__meta" id="lab-meta">
     <span class="badge" id="mode-badge" hidden>로컬 모드</span>
     <button class="linkbtn" id="config-toggle" type="button" hidden>Supabase 연결</button>
+    <span class="badge" id="user-chip" hidden></span>
+    <button class="linkbtn" id="login-btn" type="button" hidden>구글 로그인</button>
+    <button class="linkbtn" id="logout-btn" type="button" hidden>로그아웃</button>
     <a class="linkbtn" id="lab-link" href="test.html">테스트 ↗</a>
     <a class="linkbtn" id="flow-link" href="flow.html">흐름도 ↗</a>
   </div>
@@ -540,6 +543,7 @@ const LABEL = LAB ? SLOT : UI;
 
 let places = FALLBACK_PLACES.slice();
 let sb = null;
+let AUTH_USER = null;   // 로그인한 사람. 안 했으면 null 이고 예약은 익명으로 들어갑니다.
 let records = [];
 let localSeq = 0;
 let editingId = null;
@@ -878,7 +882,9 @@ function payload(){
     place_address:v.place_address, place_phone:v.place_phone,
     place_rating:v.place_rating === "" ? null : v.place_rating,
     taxi_link:state.taxi_link, taxi_from:v.taxi_from, taxi_to:v.taxi_to,
-    taxi_depart_at:v.taxi_depart_at, taxi_class:v.taxi_class, status:"dispatched"
+    taxi_depart_at:v.taxi_depart_at, taxi_class:v.taxi_class,
+    user_id: AUTH_USER ? AUTH_USER.id : null,   // 로그인 안 했으면 익명
+    status:"dispatched"
   };
 }
 function validate(){
@@ -1034,7 +1040,11 @@ function paintRecords(){
 
 async function loadRecords(){
   if (!sb) return;
-  const res = await sb.from("booking").select("*").order("created_at",{ascending:false}).limit(50);
+  let q = sb.from("booking").select("*");
+  // 로그인했으면 내 것만 봅니다. 안 했으면 익명 예약을 봅니다.
+  // 실제로 막는 것은 화면이 아니라 schema_auth.sql 의 RLS 정책입니다.
+  q = AUTH_USER ? q.eq("user_id", AUTH_USER.id) : q.is("user_id", null);
+  const res = await q.order("created_at",{ascending:false}).limit(50);
   if (!res.error){ records = res.data; paintRecords(); }
 }
 
@@ -1051,8 +1061,57 @@ async function connect(url, key){
     $("config").hidden = true;
   }
   $("rec-warn").hidden = true;
+  await setupAuth();
   await loadRecords();
   refreshNames(); render();
+}
+
+// ---------- 구글 로그인 ----------
+// Supabase Auth 를 그대로 씁니다. 열쇠도 화면도 따로 만들지 않습니다.
+// 로그인하면 그 사람 예약만 보이고, 안 하면 예전처럼 익명으로 들어갑니다.
+function paintAuth(){
+  const on = !!AUTH_USER;
+  $("login-btn").hidden  = on || !sb;
+  $("logout-btn").hidden = !on;
+  $("user-chip").hidden  = !on;
+  if (on){
+    const m = AUTH_USER.user_metadata || {};
+    $("user-chip").textContent = m.full_name || m.name || AUTH_USER.email || "로그인됨";
+  }
+}
+
+async function setupAuth(){
+  if (!sb) return;
+  try{
+    const res = await sb.auth.getSession();
+    AUTH_USER = (res.data && res.data.session) ? res.data.session.user : null;
+  } catch(e){ AUTH_USER = null; }
+  paintAuth();
+  // 구글에서 돌아오면 여기로 걸립니다. 주소창의 토큰을 SDK 가 알아서 치웁니다.
+  sb.auth.onAuthStateChange(function(_evt, session){
+    AUTH_USER = session ? session.user : null;
+    paintAuth();
+    loadRecords();
+  });
+}
+
+async function loginGoogle(){
+  if (!sb){ alert("Supabase 에 연결되지 않아 로그인할 수 없습니다."); return; }
+  // 돌아올 자리를 지금 주소로 잡습니다. /test 에서 눌러도 /test 로 돌아옵니다.
+  const back = location.origin + location.pathname + location.search;
+  const res = await sb.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: back }
+  });
+  if (res.error) alert("로그인 오류 — " + res.error.message);
+}
+
+async function logout(){
+  if (!sb) return;
+  await sb.auth.signOut();
+  AUTH_USER = null;
+  paintAuth();
+  records = []; paintRecords();
 }
 
 // ---------- 시작 ----------
@@ -1630,7 +1689,9 @@ async function chatSend(){
     place_rating: p ? p.rating : null,
     taxi_link: "none", taxi_from: box.taxi_from, taxi_to: box.taxi_to,
     taxi_depart_at: box.taxi_depart_at, taxi_class: box.taxi_class,
-    driver_phone: randomDriverPhone(), status: "dispatched"
+    driver_phone: randomDriverPhone(),
+    user_id: AUTH_USER ? AUTH_USER.id : null,
+    status: "dispatched"
   };
   let ref = "";
   try{
@@ -1807,6 +1868,8 @@ $("done-new").addEventListener("click", function(){
   $("done").hidden = true; $("summary").hidden = false; reset();
 });
 
+$("login-btn").addEventListener("click", loginGoogle);
+$("logout-btn").addEventListener("click", logout);
 $("config-toggle").addEventListener("click", function(){ $("config").hidden = !$("config").hidden; });
 $("cfg-connect").addEventListener("click", async function(){
   $("cfg-err").hidden = true;
