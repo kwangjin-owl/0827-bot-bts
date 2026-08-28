@@ -532,13 +532,22 @@ let editingId = null;
 let logItems = [];
 let prevAuto = {};
 
-const state = {
-  place_domain:"", place_type:"", place_area:"", place_price:"", place_name:"",
-  place_filters:[],                 // 조건. 묻는 칸이 아니라 후보를 좁히는 장치입니다
-  taxi_link:"none",              // 어느 칸도 장소에 안 묶인 상태로 시작합니다
-  taxi_from:"", taxi_to:"",
-  taxi_depart_at:"", taxi_class:""
-};
+// 작성 중인 상태는 탭마다 따로 둡니다.
+// 시나리오를 폼에 한 번, 봇에 한 번 돌려서 클릭 수와 턴 수를 세는 실습이라,
+// 상태를 공유하면 나중에 돌리는 쪽이 이미 채워진 칸에서 시작해 측정이 무너집니다.
+// 칸의 정의와 저장되는 표는 하나입니다. 작성 중인 값만 갈라 둡니다.
+function blankState(){
+  return {
+    place_domain:"", place_type:"", place_area:"", place_price:"", place_name:"",
+    place_filters:[],              // 조건. 묻는 칸이 아니라 후보를 좁히는 장치입니다
+    taxi_link:"none",              // 어느 칸도 장소에 안 묶인 상태로 시작합니다
+    taxi_from:"", taxi_to:"",
+    taxi_depart_at:"", taxi_class:""
+  };
+}
+const FORM_STATE = blankState();
+const BOT_STATE  = blankState();
+let state = FORM_STATE;
 // 지금 도메인에서 묻는 칸. 도메인을 바꿀 때마다 다시 계산합니다.
 let ASK = askFor("관광");
 function canLink(){
@@ -1594,13 +1603,19 @@ function chatReset(){
 }
 
 function showTab(which){
-  // 왼쪽 칼럼만 바뀝니다. 오른쪽 요약판은 두 방식 모두에서 차오릅니다.
-  // 다만 챗봇에서는 "봇이 기억하는 것" 이라는 뜻이 되므로 제목을 바꿉니다.
   const bot = which === "bot";
+
+  // 탭마다 자기 상태를 봅니다. 폼에서 채운 값이 봇 쪽에 보이면 안 됩니다.
+  // 봇은 그 말을 들은 적이 없고, 2턴 창 실험도 오염됩니다.
+  state = bot ? BOT_STATE : FORM_STATE;
+  ASK = askFor(state.place_domain);
+  if (!bot) forgot = {};
+
   if (!LAB){
     $("sum-title").textContent = bot ? "봇이 기억하는 것" : "예약 요약";
   }
   $("forget-note").hidden = !bot;
+  setupDomain();          // 갈아끼운 상태에 맞춰 화면을 다시 그립니다
   $("panel-form").hidden = bot;
   $("panel-bot").hidden = !bot;
   $("tab-form").setAttribute("aria-selected", bot ? "false" : "true");
