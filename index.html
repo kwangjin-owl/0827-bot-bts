@@ -177,9 +177,12 @@ tr.editing{background:rgba(204,120,92,.10)}
 .bub--me{align-self:flex-end;background:var(--ink);color:var(--on-dark);border-bottom-right-radius:5px}
 .bub--bot{align-self:flex-start;background:var(--canvas);color:var(--body);border-bottom-left-radius:5px}
 .bub--bot b{font-weight:500;color:var(--ink)}
-.bub__head{display:block;font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--muted-soft);
-  border-bottom:1px solid var(--hairline);padding-bottom:9px;margin-bottom:9px;white-space:pre-wrap}
+/* 계측은 손님 말이 아닙니다. 배경과 왼쪽 띠로 본문과 갈라 둡니다. */
+.bub__head{display:block;font-family:var(--mono);font-size:11px;line-height:1.65;color:var(--muted-soft);
+  background:var(--surface-soft);border-left:3px solid var(--accent-amber);
+  border-radius:6px;padding:9px 11px;margin:-4px -4px 11px;white-space:pre-wrap}
 .bub__head .gone{color:var(--primary)}
+.bub__head .lab{color:#7a4d12;font-weight:500}
 .chat__quick{display:flex;flex-wrap:wrap;gap:8px}
 .labbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;color:var(--muted)}
 .labbar .chip{padding:5px 12px;font-size:13px}
@@ -1262,7 +1265,9 @@ const LLM_CHOICES = {
 let ENGINE = "";        // 실제로 무엇이 뽑았는지 - llm 인지 rule 인지
 let LAST_RAW = "";
 let LAST_WINDOW = [];   // 모델이 실제로 본 줄들. 창 밖은 여기 없습니다.
-let MEMO_SENT = 0;      // 이번에 같이 넘긴 메모판 칸 수      // 모델이 그대로 뱉은 것. 실습 화면에서 보여 줍니다.
+let MEMO_SENT = 0;      // 이번에 같이 넘긴 메모판 칸 수
+let LAB_LOST = "";      // 이번 턴에 창 밖으로 밀린 조건
+let LAB_LEFT = "";      // 채운 칸 · 남은 칸      // 모델이 그대로 뱉은 것. 실습 화면에서 보여 줍니다.
 
 async function extractLLM(text, history, memo){
   if (!LLM_NAMES.length) return null;
@@ -1521,6 +1526,8 @@ function labHeader(box, ever){
     if (LAST_RAW) out += "\n모델 원문 " + esc(LAST_RAW);
     out += "\n";
   }
+  if (LAB_LEFT) out += "\n" + LAB_LEFT;
+  if (LAB_LOST) out += '\n<span class="lab">' + esc(LAB_LOST) + "</span>";
   return out + "</span>";
 }
 
@@ -1675,6 +1682,10 @@ async function chatSend(){
   buildDomainChips(); buildFilterChips(); buildChips();
   refreshNames(); render();
   const missing = ASK.filter(function(k){ return !box[k]; });
+  // 계측 줄은 턴마다 새로 만듭니다. 안 그러면 지난 턴 것이 남습니다.
+  LAB_LOST = ""; LAB_LEFT = "";
+  // 잔존 확인 · 이월 질문 · 완료는 여기서 만든 말머리를 씁니다.
+  // 되묻기만 계측 두 줄을 채운 뒤에 다시 만듭니다.
   const head = LAB ? labHeader(box, ever) : "";
 
   // 장소를 바꿨는데 택시 칸에 옛 이름이 남아 있으면 그냥 두지 않고 물어봅니다.
@@ -1765,7 +1776,7 @@ async function chatSend(){
       const names = lostFilters.map(function(f){
         return f.replace(/\s*유무$/, "").replace(/\s*가능$/, "");
       }).join(" · ");
-      ack.unshift(names + " 조건은 " + HIST + "턴 창 밖으로 밀려서 지금은 안 걸려 있어요.");
+      LAB_LOST = names + " 조건이 창 " + HIST + "턴 밖으로 밀려 지금은 안 걸려 있습니다";
     }
     let lead = ack.length ? ack.join("\n") + "\n\n" : "";
     if (!ack.length && turns.length > 1) lead = "그 말씀은 잘 못 알아들었어요.\n\n";
@@ -1782,16 +1793,15 @@ async function chatSend(){
     const everCount = ASK.filter(function(k){ return ever[k]; }).length;
     if (everCount > done) lead += "앞서 말씀해 주신 걸 제가 놓쳤어요. 한 번만 더 부탁드려요.\n\n";
 
-    // 칸 개수는 실습 화면에서만 보여 줍니다.
-    const bar = LAB
-      ? "필수 " + ASK.length + "칸 중 " + done + "칸 · " + missing.length + "칸 남음\n"
-      : "";
+    // 칸 개수는 계측입니다. 본문이 아니라 말머리에 붙입니다.
+    if (LAB) LAB_LEFT = "채운 칸 " + done + " · 남은 칸 " + missing.length;
+    const bar = "";
 
     const body = (STYLE === "all_at_once")
       ? missing.map(function(k){ return "\u00b7 " + askText(k); }).join("\n")
       : askText(missing[0]);
     $("chat-input").placeholder = HINT[missing[0]] || "";
-    sayBot(head, lead + bar + body);
+    sayBot(LAB ? labHeader(box, ever) : "", lead + bar + body);
     return;
   }
 
