@@ -172,7 +172,10 @@ tr.editing{background:rgba(204,120,92,.10)}
 
 .botpanel{margin-top:0}
 .chat{background:var(--surface-card);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:16px}
-.chat__log{min-height:380px;max-height:520px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-right:6px}
+/* 높이를 고정합니다. min~max 로 두면 말풍선이 쌓일 때마다 상자가 커지고,
+   그때마다 아래 버튼과 입력칸이 밀려 내려가 화면이 튑니다.
+   clamp 는 화면 크기에 따라 정해지고 내용에는 반응하지 않습니다. */
+.chat__log{height:clamp(360px,55vh,560px);overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-right:6px}
 .bub{max-width:76%;padding:13px 17px;border-radius:14px;font-size:14.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
 .bub--me{align-self:flex-end;background:var(--ink);color:var(--on-dark);border-bottom-right-radius:5px}
 .bub--bot{align-self:flex-start;background:var(--canvas);color:var(--body);border-bottom-left-radius:5px}
@@ -189,7 +192,7 @@ tr.editing{background:rgba(204,120,92,.10)}
 .labbar__note{color:var(--muted-soft)}
 .chat__bar{display:flex;gap:10px;flex-wrap:wrap}
 .chat__bar input{flex:1 1 240px}
-@media (max-width:880px){ .chat{padding:18px} .bub{max-width:88%} }
+@media (max-width:880px){ .chat{padding:18px} .bub{max-width:88%} .chat__log{height:clamp(320px,60vh,460px)} }
 .botframe{background:var(--surface-card);border-radius:12px;overflow:hidden;height:680px}
 .botframe iframe{width:100%;height:100%;border:0;display:block}
 .botsetup{background:var(--surface-card);border-radius:12px;padding:32px}
